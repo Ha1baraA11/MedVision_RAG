@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MedVision助手</title>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* 触觉按钮样式（按下时有下沉反馈效果） */
+        .btn-tactile {
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.15);
+            transition: all 0.1s;
+        }
+
+        .btn-tactile:active {
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+            transform: translateY(4px);
+        }
+
+        /* 大号文字工具类（适老化设计） */
+        .text-huge {
+            font-size: 1.5rem;
+            line-height: 1.4;
+        }
+
+        /* 对话气泡样式覆盖 */
+        .bubble-user {
+            background: #2563EB;
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        .bubble-ai {
+            background: #FFFFFF;
+            color: #1F2937;
+            border: 2px solid #E5E7EB;
+            border-radius: 20px 20px 20px 4px;
+        }
+
+        /* Modal 动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .animate-scaleIn {
+            animation: scaleIn 0.25s ease-out;
+        }
+
+        /* 新手引导教程 */
+        .tutorial-overlay {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tutorial-highlight-ring {
+            border: 3px solid #3B82F6;
+            border-radius: 16px;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 24px 0 rgba(59, 130, 246, 0.4);
+            animation: tutorialPulse 2s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes tutorialPulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 24px 0 rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.15), 0 0 36px 0 rgba(59, 130, 246, 0.5); }
+        }
+
+        .tutorial-tooltip {
+            background: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 320px;
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        .tutorial-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #D1D5DB;
+            transition: all 0.3s;
+        }
+
+        .tutorial-dot.active {
+            background: #2563EB;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .tutorial-dot.done {
+            background: #2563EB;
+        }
+
+    </style>
+</head>
+
+<body class="bg-slate-50 h-screen flex flex-col text-gray-900">
+
+    <div id="app" class="flex-1 flex flex-col h-full relative">
+
+        <!-- 加载遮罩层：识别/分析进行中时全屏覆盖 -->
+        <div v-if="isLoading" class="absolute inset-0 z-50 bg-white/95 flex flex-col items-center justify-center">
+            <div class="w-20 h-20 border-8 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+            <p class="text-3xl font-bold text-blue-800">{{ statusMessage }}</p>
+        </div>
+
+        <!-- 阶段1：拍照空闲页面 -->
+        <div v-if="phase === 'idle'" class="flex-1 flex flex-col items-center justify-between p-6 bg-blue-50">
+            <div class="mt-8 text-center">
+                <h1 class="text-4xl font-extrabold text-blue-900 mb-2">MedVision助手</h1>
+                <p class="text-xl text-blue-600 font-medium">欢迎使用，请拍照</p>
+            </div>
+
+            <div @click="triggerFileUpload" data-tutorial="upload"
+                class="w-72 h-72 rounded-full bg-blue-600 flex flex-col items-center justify-center text-white btn-tactile cursor-pointer mb-12 border-8 border-blue-200 active:bg-blue-700">
+                <svg class="w-24 h-24 mb-4" viewBox="0 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M149.1 64.8L138.7 96H64C28.7 96 0 124.7 0 160v256c0 35.3 28.7 64 64 64h384c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64h-74.7l-10.4-31.2C356.5 45.9 337.8 32 315.5 32h-119c-22.3 0-41 13.9-47.4 32.8zM256 384c-61.9 0-112-50.1-112-112s50.1-112 112-112 112 50.1 112 112-50.1 112-112 112zm0-64c26.5 0 48-21.5 48-48s-21.5-48-48-48-48 21.5-48 48 21.5 48 48 48z"/>
+                </svg>
+                <span class="text-3xl font-bold tracking-widest">拍照</span>
+            </div>
+
+            <div class="mb-8 text-center text-gray-500">
+                <p class="text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i>支持 图片 / PDF / Word 上传</p>
+            </div>
+
+            <!-- 隐藏入口：右下角版本号，点击进入手动录入模式 -->
+            <div @click="phase = 'manual'"
+                class="fixed bottom-4 right-4 text-gray-300 text-sm opacity-30 hover:opacity-100 cursor-pointer transition-opacity z-50">
+                v4.6.0
+            </div>
+
+            <input type="file" ref="fileInput" accept="image/*,.pdf,.doc,.docx" class="hidden"
+                @change="handleFileUpload">
+        </div>
+
+        <!-- 阶段3：手动输入说明书文本 -->
+        <div v-else-if="phase === 'manual'" class="flex-1 flex flex-col bg-white">
+            <div class="bg-blue-600 p-4 text-white shadow-lg flex items-center">
+                <button @click="phase = 'idle'" class="mr-4 text-2xl"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="text-2xl font-bold">手动录入说明书</h2>
+            </div>
+            <div class="flex-1 p-6 flex flex-col">
+                <p class="text-gray-500 mb-4 bg-yellow-50 p-3 rounded-lg text-sm border border-yellow-100">
+                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>提示：粘贴超过 1500 字的文本可触发向量检索模式。
+                </p>
+                <textarea v-model="manualText"
+                    class="flex-1 border-2 border-gray-200 rounded-xl p-4 text-lg mb-4 focus:border-blue-500 focus:outline-none resize-none"
+                    placeholder="请在此粘贴药品说明书内容..."></textarea>
+                <button @click="handleManualSubmit"
+                    class="w-full py-4 bg-blue-600 text-white rounded-xl text-xl font-bold shadow-lg active:bg-blue-700 transition-colors btn-tactile">
+                    <i class="fas fa-robot mr-2"></i>开始分析
+                </button>
+            </div>
+        </div>
+
+        <!-- 阶段2：对话主界面 -->
+        <div v-else class="flex-1 flex flex-col h-full bg-white relative">
+
+            <div v-if="showModelMenu" @click="closeModelMenu" class="absolute inset-0 z-20 bg-transparent"></div>
+
+            <!-- 顶部导航栏：模型切换、语言切换、PDF导出、重置 -->
+            <div class="bg-blue-600 p-4 text-white shadow-lg grid grid-cols-[1fr_auto_1fr] items-center relative z-30">
+                <div class="relative flex items-center justify-self-start" @click.stop>
+                    <button @click="toggleModelMenu" :title="getSelectedModelOption().label" data-tutorial="model"
+                        class="bg-white/20 p-3 rounded-xl mr-2 active:bg-white/30 min-w-[5.5rem] flex justify-center items-center transition-colors">
+                        <span class="text-base font-bold">{{ getSelectedModelOption().shortLabel }}</span>
+                        <i class="fas fa-chevron-down text-xs ml-2 opacity-80"></i>
+                    </button>
+                    <div v-if="showModelMenu" data-tutorial="model-dropdown"
+                        class="absolute top-full left-0 mt-2 w-52 rounded-2xl bg-blue-700/95 border border-white/15 shadow-2xl overflow-hidden animate-scaleIn backdrop-blur-sm">
+                        <button v-for="option in MODEL_OPTIONS" :key="option.value" @click="selectModel(option.value)"
+                            class="w-full px-4 py-3 text-left flex items-center justify-between transition-colors"
+                            :class="selectedModel === option.value ? 'bg-white/20 text-white' : 'text-blue-50 hover:bg-white/10'">
+                            <span class="font-semibold">{{ option.label }}</span>
+                            <i v-if="selectedModel === option.value" class="fas fa-check text-sm"></i>
+                        </button>
+                    </div>
+
+                    <!-- 语言切换按钮 -->
+                    <button @click="closeModelMenu(); toggleLanguage()"
+                        class="bg-white/20 p-3 rounded-xl mr-2 active:bg-white/30 w-16 flex justify-center items-center transition-colors">
+                        <span class="text-xl font-bold">{{ language === 'zh' ? 'CN' : 'EN' }}</span>
+                    </button>
+                    <button @click="closeModelMenu(); generateReport()" title="Export PDF" data-tutorial="pdf"
+                        class="bg-white/20 p-3 rounded-xl mr-4 active:bg-white/30 w-12 flex justify-center items-center transition-colors">
+                        <i class="fas fa-file-pdf text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-sm opacity-80">当前识别</p>
+                    <h2 class="text-3xl font-bold tracking-wide">{{ medicineName }}</h2>
+                </div>
+                <button @click="closeModelMenu(); reset()" data-tutorial="refresh" class="bg-white/20 p-3 rounded-xl justify-self-end active:bg-white/30">
+                    <i class="fas fa-redo text-xl"></i>
+                </button>
+            </div>
+
+            <!-- 对话历史记录区域 -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50" ref="chatContainer">
+                <div v-if="chatHistory.length === 0" class="text-center mt-12 opacity-50">
+                    <i class="fas fa-comment-medical text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-2xl">请问我：<br>"这个药怎么吃？"</p>
+                </div>
+
+                <div v-for="(msg, index) in chatHistory" :key="index" class="flex flex-col"
+                    :class="msg.role === 'user' ? 'items-end' : 'items-start'">
+                    <span class="text-sm text-gray-500 mb-1 mx-2">{{ msg.role === 'user' ? '我' : '用药助手' }}</span>
+                    <div class="p-5 max-w-[85%] text-huge shadow-sm"
+                        :class="msg.role === 'user' ? 'bubble-user' : 'bubble-ai'">
+                        {{ msg.content }}
+                    </div>
+
+                    <!-- 用药卡片（附加功能：展示用法用量与禁忌） -->
+                    <div v-if="msg.card"
+                        class="mt-2 ml-1 max-w-[85%] bg-white rounded-xl shadow-md border overflow-hidden animate-scaleIn origin-top-left">
+                        <div class="bg-blue-600 text-white px-4 py-2 font-bold flex justify-between items-center">
+                            <span><i class="fas fa-pills mr-2"></i>{{ language === 'zh' ? '用药小贴士' : 'Medication Tips'
+                                }}</span>
+                            <span class="text-sm opacity-80 bg-blue-700 px-2 py-0.5 rounded">
+                                {{ language === 'zh' ? (msg.card.name_zh || msg.card.name) : (msg.card.name_en ||
+                                msg.card.name) }}
+                            </span>
+                        </div>
+                        <div class="p-4 space-y-3 text-lg">
+                            <div class="flex">
+                                <span class="text-blue-600 font-bold w-24 shrink-0">{{ language === 'zh' ? '用法' :
+                                    'Usage' }}</span>
+                                <span class="text-gray-700 font-medium">
+                                    {{ language === 'zh' ? (msg.card.usage_zh || msg.card.usage) : (msg.card.usage_en ||
+                                    msg.card.usage) }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-red-500 font-bold w-24 shrink-0">{{ language === 'zh' ? '禁忌' :
+                                    'Caveats' }}</span>
+                                <span class="text-gray-700 font-medium">
+                                    {{ language === 'zh' ? (msg.card.taboo_zh || msg.card.taboo) : (msg.card.taboo_en ||
+                                    msg.card.taboo) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RAG 引用来源（展示向量检索的参考片段与相似度） -->
+                    <div v-if="msg.citations && msg.citations.length > 0"
+                        class="mt-2 ml-1 max-w-[85%] animate-scaleIn origin-top-left">
+                        <button @click="msg.citationsExpanded = !msg.citationsExpanded"
+                            class="flex items-center text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
+                            <i :class="msg.citationsExpanded ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" class="mr-1.5 text-xs"></i>
+                            <span>{{ language === 'zh' ? '本次回答参考了 ' + msg.citations.length + ' 段内容' : 'Referenced ' + msg.citations.length + ' sources' }}</span>
+                        </button>
+                        <div v-if="msg.citationsExpanded" class="mt-2 space-y-2">
+                            <div v-for="c in msg.citations" :key="c.index"
+                                class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-gray-400 font-mono text-xs">#{{ c.index }}</span>
+                                    <span class="text-xs px-2 py-0.5 rounded-full"
+                                        :class="c.score >= 0.8 ? 'bg-green-100 text-green-700' : c.score >= 0.6 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'">
+                                        {{ language === 'zh' ? '相似度' : 'Score' }} {{ Math.round(c.score * 100) }}%
+                                    </span>
+                                </div>
+                                <p class="text-gray-600 leading-relaxed">{{ c.content }}{{ c.content.length >= 200 ? '...' : '' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="isThinking"
+                    class="flex items-center space-x-3 p-4 bg-white rounded-xl shadow-sm border w-fit">
+                    <i class="fas fa-circle-notch fa-spin text-blue-600 text-2xl"></i>
+                    <span class="text-xl text-gray-600">正在思考...</span>
+                </div>
+            </div>
+
+            <!-- 语音转写中指示器（水平居中显示） -->
+            <div v-if="isTranscribing" class="flex justify-center">
+                <div class="flex items-center space-x-3 p-4 bg-white rounded-xl shadow-sm border">
+                    <i class="fas fa-circle-notch fa-spin text-green-600 text-2xl"></i>
+                    <span class="text-xl text-gray-600">正在识别语音...</span>
+                </div>
+            </div>
+
+            <!-- 底部控制区域：语音按钮、键盘输入 -->
+            <div class="p-4 bg-white border-t border-gray-200 relative">
+                
+                <!-- 悬浮打断按钮：TTS播报中显示，点击可打断并自动进入录音 -->
+                <transition>
+                    <div v-if="isSpeaking || isAnnouncingMedicine" class="absolute -top-[70px] right-4 z-40 animate-scaleIn">
+                        <button @click="interruptSpeech"
+                            class="flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 border border-blue-400/30 text-white px-6 py-2.5 rounded-full shadow-[0_4px_14px_0_rgba(59,130,246,0.39)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.23)] hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-700 active:scale-95 transition-all duration-200 cursor-pointer">
+                            <i class="fas fa-pause-circle mr-2 text-xl opacity-90"></i>
+                            <span class="font-bold text-lg tracking-wide">打断回答</span>
+                        </button>
+                    </div>
+                </transition>
+                
+                <div class="flex justify-end mb-2">
+                    <button @click="toggleDataInput" class="text-gray-400 text-sm underline px-2">
+                        {{ showKeyboard ? '收起键盘' : '无法说话？点此输入' }}
+                    </button>
+                </div>
+
+                <div v-if="showKeyboard" class="mb-4 flex gap-2">
+                    <input id="chatInput" v-model="textInput" type="text" @keyup.enter="sendText"
+                        class="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 text-xl" placeholder="输入问题...">
+                    <button @click="sendText"
+                        class="bg-blue-600 text-white px-6 rounded-xl font-bold text-xl">发送</button>
+                </div>
+
+
+
+                <button
+                    class="w-full h-24 rounded-2xl flex items-center justify-center space-x-4 btn-tactile transition-colors"
+                    :class="(isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking) ? 'bg-gray-400 text-gray-200 cursor-not-allowed' : (isListening ? 'bg-red-500 text-white' : 'bg-green-600 text-white')"
+                    :disabled="isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking"
+                    @touchstart.prevent="!(isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking) && startListening()"
+                    @touchend.prevent="stopListening()"
+                    @mousedown="!(isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking) && startListening()"
+                    @mouseup="stopListening()"
+                    data-tutorial="voice">
+                    <i class="fas fa-microphone text-4xl"></i>
+                    <span class="text-3xl font-bold">{{ (isAnnouncingMedicine || isSpeaking || isTranscribing ||
+                        isThinking) ? '请 稍 候...' : (isListening
+                        ? (isAutoListening ? '正在聆听，请继续提问…' : '松 开 发 送') : '按 住 说 话') }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 自定义确认弹窗 (替代浏览器原生 confirm) -->
+        <div v-if="showConfirmModal"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+            <div class="bg-white rounded-3xl p-8 mx-6 shadow-2xl max-w-sm w-full transform animate-scaleIn">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-redo text-orange-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">重新拍照？</h3>
+                    <p class="text-gray-500 text-lg mb-6">当前对话记录将被清空</p>
+                </div>
+                <div class="flex gap-4">
+                    <button @click="cancelReset"
+                        class="flex-1 py-4 px-6 bg-gray-100 text-gray-700 rounded-2xl text-xl font-semibold active:bg-gray-200 transition-colors">
+                        取消
+                    </button>
+                    <button @click="confirmReset"
+                        class="flex-1 py-4 px-6 bg-orange-500 text-white rounded-2xl text-xl font-semibold active:bg-orange-600 transition-colors">
+                        确认
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 自定义错误提示弹窗 (替代浏览器原生 alert) -->
+        <div v-if="showErrorModal"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
+            @click.self="closeErrorModal">
+            <div class="bg-white rounded-3xl p-8 mx-6 shadow-2xl max-w-sm w-full transform animate-scaleIn">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">出错了</h3>
+                    <p class="text-gray-600 text-lg mb-6">{{ errorMessage }}</p>
+                </div>
+                <button @click="closeErrorModal"
+                    class="w-full py-4 px-6 bg-blue-600 text-white rounded-2xl text-xl font-semibold active:bg-blue-700 transition-colors">
+                    知道了
+                </button>
+            </div>
+        </div>
+        <!-- 新手引导教程蒙层（四块面板镂空方案，避免层叠上下文截断点击事件） -->
+        <div v-if="tutorialActive" class="tutorial-overlay fixed inset-0 z-[100] pointer-events-none">
+            <!-- 初始全屏遮罩（定位完成前显示，避免黑屏闪烁） -->
+            <div v-if="!tutorialReady" class="absolute inset-0 bg-black/60"></div>
+            <!-- 四块遮罩面板，pointer-events-auto 拦截非目标区域点击 -->
+            <template v-if="tutorialReady">
+                <div class="absolute left-0 right-0 bg-black/60 pointer-events-auto" :style="panelStyles.top"></div>
+                <div class="absolute left-0 right-0 bg-black/60 pointer-events-auto" :style="panelStyles.bottom"></div>
+                <div class="absolute bg-black/60 pointer-events-auto" :style="panelStyles.left"></div>
+                <div class="absolute bg-black/60 pointer-events-auto" :style="panelStyles.right"></div>
+                <!-- 高亮环形边框（纯视觉，不拦截点击） -->
+                <div class="tutorial-highlight-ring absolute transition-all duration-300 ease-out"
+                    :style="cutoutStyle">
+                </div>
+            </template>
+            <!-- 提示卡片（始终显示，tooltip 不依赖面板定位） -->
+            <div v-if="tutorialReady" class="tutorial-tooltip absolute p-6 transition-all duration-300 ease-out pointer-events-auto"
+                :style="tooltipStyle">
+                <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                        <i :class="'fas ' + TUTORIAL_STEPS[tutorialStep].icon + ' text-blue-600 text-lg'"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">步骤 {{ tutorialStep + 1 }} / {{ TUTORIAL_STEPS.length }}</p>
+                        <h3 class="text-xl font-bold text-gray-800">{{ TUTORIAL_STEPS[tutorialStep].title }}</h3>
+                    </div>
+                </div>
+                <p class="text-gray-600 text-base leading-relaxed mb-3">{{ TUTORIAL_STEPS[tutorialStep].desc }}</p>
+                <p class="text-xs text-blue-500 bg-blue-50 rounded-lg px-3 py-2 mb-4">
+                    <i class="fas fa-lightbulb mr-1"></i>{{ TUTORIAL_STEPS[tutorialStep].tip }}
+                </p>
+                <!-- 步骤指示器 -->
+                <div class="flex items-center justify-between">
+                    <div class="flex space-x-1.5">
+                        <span v-for="(_, i) in TUTORIAL_STEPS" :key="i"
+                            class="tutorial-dot" :class="{ active: i === tutorialStep, done: i < tutorialStep }"></span>
+                    </div>
+                    <button @click="skipTutorial"
+                        class="text-xs text-gray-400 hover:text-gray-600 underline transition-colors">
+                        跳过教程
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隐藏的 PDF 报告模板（导出时临时显示并截图为 PDF） -->
+        <div id="report-template" class="hidden fixed bg-white p-8 w-[210mm] h-auto top-0 left-0 z-50 text-black">
+            <div class="text-center border-b-2 border-black pb-4 mb-6">
+                <h1 class="text-3xl font-bold">{{ language === 'zh' ? 'MedVision助手 — 用药咨询报告' : 'MedVision Medical Report' }}
+                </h1>
+                <p class="text-gray-500 mt-2">{{ language === 'zh' ? '生成时间：' : 'Generated: ' }}{{ new
+                    Date().toLocaleString() }}</p>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2">{{ language === 'zh' ? '药品信息' : 'Medicine Information' }}</h2>
+                <div class="border p-4 rounded">
+                    <p class="text-2xl font-bold text-blue-600 mb-2">{{ medicineName }}</p>
+                    <div v-for="msg in chatHistory" :key="msg">
+                        <div v-if="msg.card" class="mt-4">
+                            <p><strong>{{ language === 'zh' ? '用法：' : 'Usage: ' }}</strong>{{ language === 'zh' ?
+                                (msg.card.usage_zh || msg.card.usage) : (msg.card.usage_en || msg.card.usage) }}</p>
+                            <p><strong>{{ language === 'zh' ? '禁忌：' : 'Taboo: ' }}</strong>{{ language === 'zh' ?
+                                (msg.card.taboo_zh || msg.card.taboo) : (msg.card.taboo_en || msg.card.taboo) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-bold mb-2">{{ language === 'zh' ? '问诊记录' : 'Consultation Log' }}</h2>
+                <div v-for="(msg, index) in chatHistory" :key="index" class="mb-2 border-b pb-2">
+                    <p class="font-bold text-sm text-gray-600">{{ msg.role === 'user' ? (language === 'zh' ? '患者' :
+                        'Patient') : (language === 'zh' ? 'MedVision助手' : 'MedVision') }}:</p>
+                    <p>{{ msg.content }}</p>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center text-gray-400 text-sm">
+                {{ language === 'zh' ? '由MedVision助手AI生成' : 'Generated by MedVision AI Assistant' }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 全局常量 ==========
+        const API_BASE = 'http://localhost:8080/api/medicine'; // Java 后端 API 基础地址
+        const BACKEND_MIN_RECORDING_MS = 500;                 // 最短录音时长（毫秒），低于此值视为无效录音
+        const INTERIM_FALLBACK_MIN_LENGTH = 2;                // Web Speech API 临时结果最小有效字符数
+        const RECOGNITION_FINALIZE_TIMEOUT_MS = 1500;         // Web Speech API 最终化超时时间（毫秒）
+        const MODEL_STORAGE_KEY = 'medvision_chat_model';     // localStorage 中存储模型选择的键名
+        const DEFAULT_CHAT_MODEL = 'deepseek-v4-flash';       // 默认聊天模型
+        // 可选模型列表
+        const MODEL_OPTIONS = [
+            { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash', shortLabel: 'Flash' },
+            { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', shortLabel: 'Pro' }
+        ];
+        // 解构 Vue 3 组合式 API
+        const { createApp, ref, onMounted, nextTick, watch, computed } = Vue;
+
+        createApp({
+            setup() {
+                // ========== 响应式状态变量 ==========
+                const phase = ref('idle');          // 当前页面阶段：'idle'=拍照页, 'chat'=对话页, 'manual'=手动输入页
+                const isLoading = ref(false);       // 全局加载状态（识别/分析中显示遮罩）
+                const statusMessage = ref('');       // 加载遮罩的提示文案
+                const fileInput = ref(null);         // 文件上传 input 元素的引用
+
+                const medicineId = ref(null);        // 当前识别到的药品 ID
+                const medicineName = ref('未知药品'); // 当前识别到的药品名称
+                const manualText = ref('');           // 手动输入的说明书文本
+
+                // ========== 多语言支持 ==========
+                const language = ref('zh');           // 当前语言：'zh'=中文, 'en'=英文
+                /** 切换中英文 */
+                const toggleLanguage = () => {
+                    language.value = language.value === 'zh' ? 'en' : 'zh';
+                };
+
+                // ========== 模型选择逻辑 ==========
+                /** 标准化模型值，若不在可选列表中则回退到默认模型 */
+                const normalizeChatModel = (model) => {
+                    return MODEL_OPTIONS.some(option => option.value === model) ? model : DEFAULT_CHAT_MODEL;
+                };
+                /** 从 localStorage 读取上次选择的模型 */
+                const readStoredModel = () => {
+                    try {
+                        return normalizeChatModel(window.localStorage.getItem(MODEL_STORAGE_KEY));
+                    } catch (err) {
+                        console.warn('Model storage unavailable', err);
+                        return DEFAULT_CHAT_MODEL;
+                    }
+                };
+                const selectedModel = ref(readStoredModel()); // 当前选中的模型
+                const showModelMenu = ref(false);              // 模型下拉菜单是否展开
+                /** 获取当前选中模型的完整配置对象 */
+                const getSelectedModelOption = () => {
+                    return MODEL_OPTIONS.find(option => option.value === selectedModel.value) || MODEL_OPTIONS[0];
+                };
+                /** 切换模型下拉菜单的显示/隐藏 */
+                const toggleModelMenu = () => {
+                    showModelMenu.value = !showModelMenu.value;
+                };
+                /** 关闭模型下拉菜单 */
+                const closeModelMenu = () => {
+                    showModelMenu.value = false;
+                };
+                /** 选择指定模型并持久化到 localStorage */
+                const selectModel = (model) => {
+                    selectedModel.value = normalizeChatModel(model);
+                    showModelMenu.value = false;
+                    try {
+                        window.localStorage.setItem(MODEL_STORAGE_KEY, selectedModel.value);
+                    } catch (err) {
+                        console.warn('Failed to persist model selection', err);
+                    }
+                    // 教程：步骤1(切换模型) → 步骤2
+                    if (tutorialActive.value && tutorialStep.value === 1) {
+                        nextTutorialStep();
+                    }
+                };
+
+                // ========== 对话与 UI 状态 ==========
+                const chatHistory = ref([]);          // 对话历史记录数组，每条含 role/content/card/citations
+                const textInput = ref('');            // 文本输入框的值
+                const isThinking = ref(false);        // AI 思考中状态（显示加载动画）
+                const showKeyboard = ref(false);       // 是否显示键盘输入区域
+                const showConfirmModal = ref(false);   // 自定义确认弹窗（替代浏览器原生 confirm）
+                const showErrorModal = ref(false);     // 自定义错误弹窗（替代浏览器原生 alert）
+                const errorMessage = ref('');           // 错误弹窗的提示信息
+
+                // ========== 新手引导教程 ==========
+                const TUTORIAL_STORAGE_KEY = 'medvision_onboarded';  // localStorage 中标记教程已完成的键名
+                const tutorialActive = ref(false);       // 教程是否正在进行
+                const tutorialStep = ref(0);              // 当前教程步骤索引
+                const tutorialCompleted = ref(false);     // 教程是否已完成（含历史记录）
+                const tutorialReady = ref(false);          // 遮罩面板定位完成后才显示（避免闪烁）
+                const tutorialTargetRect = ref({ top: 0, left: 0, width: 0, height: 0 }); // 当前高亮目标元素的位置矩形
+                const TUTORIAL_STEPS = [
+                    { id: 'upload', title: '拍照上传', desc: '点击中央蓝色按钮，拍照或上传图片/PDF/Word 文件以开始问诊', icon: 'fa-camera', phase: 'idle', tip: '上传成功后自动进入下一步', selector: '[data-tutorial="upload"]', cutoutPad: { top: 12, right: 12, bottom: 12, left: 12 } },
+                    { id: 'model', title: '切换模型', desc: '点击此处可在 DeepSeek V4 Flash 与 DeepSeek V4 Pro 之间切换，选择适合当前任务的模型', icon: 'fa-robot', phase: 'chat', tip: '点击按钮后在弹出的菜单中进行选择', selector: '[data-tutorial="model"]', cutoutPad: { top: 8, right: 8, bottom: 8, left: 8 } },
+                    { id: 'pdf', title: '导出报告', desc: '完成问诊后，点击 PDF 图标按钮可将当前问诊记录导出为 PDF 文件保存到本地', icon: 'fa-file-pdf', phase: 'chat', tip: '需要先进行对话才能导出', selector: '[data-tutorial="pdf"]', cutoutPad: { top: 8, right: 8, bottom: 8, left: 8 } },
+                    { id: 'refresh', title: '刷新重置', desc: '点击右上角刷新按钮可清空当前对话，回到拍照页面重新开始新的问诊', icon: 'fa-redo', phase: 'chat', tip: '教程期间不会真的重置', selector: '[data-tutorial="refresh"]', cutoutPad: { top: 8, right: 8, bottom: 8, left: 8 } },
+                    { id: 'voice', title: '按住说话', desc: '按住底部绿色按钮开始语音提问，松开后自动发送。也可以点击下方"无法说话？点此输入"使用键盘打字', icon: 'fa-microphone', phase: 'chat', tip: '完成后自动衔接问答环节', selector: '[data-tutorial="voice"]', cutoutPad: { top: 8, right: 8, bottom: 8, left: 8 } },
+                ];
+
+                /** 计算镂空高亮区域的样式（目标元素 + 内边距） */
+                const cutoutStyle = computed(() => {
+                    const r = tutorialTargetRect.value;
+                    const pad = TUTORIAL_STEPS[tutorialStep.value]?.cutoutPad || { top: 8, right: 8, bottom: 8, left: 8 };
+                    const top = Math.max(0, r.top - (pad.top || 0));
+                    const left = Math.max(0, r.left - (pad.left || 0));
+                    const bottom = Math.min(window.innerHeight, r.top + r.height + (pad.bottom || 0));
+                    const right = Math.min(window.innerWidth, r.left + r.width + (pad.right || 0));
+                    return {
+                        top: top + 'px',
+                        left: left + 'px',
+                        width: (right - left) + 'px',
+                        height: (bottom - top) + 'px',
+                    };
+                });
+
+                /** 计算四块遮罩面板的样式，围绕镂空区域形成蒙版效果 */
+                const panelStyles = computed(() => {
+                    const r = tutorialTargetRect.value;
+                    const pad = TUTORIAL_STEPS[tutorialStep.value]?.cutoutPad || { top: 8, right: 8, bottom: 8, left: 8 };
+                    const ct = Math.max(0, r.top - (pad.top || 0));
+                    const cl = Math.max(0, r.left - (pad.left || 0));
+                    const cb = Math.min(window.innerHeight, r.top + r.height + (pad.bottom || 0));
+                    const cr = Math.min(window.innerWidth, r.left + r.width + (pad.right || 0));
+                    return {
+                        top:    { top: 0, left: 0, right: 0, height: ct + 'px' },
+                        bottom: { top: cb + 'px', left: 0, right: 0, bottom: 0 },
+                        left:   { top: ct + 'px', left: 0, width: cl + 'px', bottom: window.innerHeight - cb + 'px' },
+                        right:  { top: ct + 'px', left: cr + 'px', right: 0, bottom: window.innerHeight - cb + 'px' },
+                    };
+                });
+
+                /** 计算教程提示卡片的位置（优先显示在目标下方，空间不足时移到上方） */
+                const tooltipStyle = computed(() => {
+                    const r = tutorialTargetRect.value;
+                    const pad = TUTORIAL_STEPS[tutorialStep.value]?.cutoutPad || { top: 8, right: 8, bottom: 8, left: 8 };
+                    const cutoutBottom = r.top + r.height + (pad.bottom || 0);
+                    const cutoutLeft = r.left - (pad.left || 0);
+                    const cutoutRight = r.left + r.width + (pad.right || 0);
+                    const gap = 16;
+                    let top = cutoutBottom + gap;
+                    let left = r.left + r.width / 2 - 160;
+                    if (top + 280 > window.innerHeight) {
+                        top = r.top - (pad.top || 0) - gap;
+                        top = Math.max(8, top - 280);
+                    }
+                    const maxLeft = window.innerWidth - 320 - 16;
+                    const minLeft = 16;
+                    left = Math.max(minLeft, Math.min(maxLeft, left));
+                    return { top: top + 'px', left: left + 'px' };
+                });
+
+                // ========== 语音识别/录音状态 ==========
+                const isListening = ref(false);              // 是否正在录音/监听
+                const isAutoListening = ref(false);          // 是否为打断后自动触发的免按压录音
+                const isSpeaking = ref(false);                // TTS 播放锁：播放时禁用麦克风
+                const isAnnouncingMedicine = ref(false);     // 药品名称播报锁：播报完成前禁止操作
+                const isTranscribing = ref(false);           // ASR 转写加载状态（显示"正在识别语音..."）
+                const liveTranscript = ref("");              // 实时字幕文本
+                const SpeechRecognitionCtor = window.webkitSpeechRecognition || null; // Web Speech API 构造函数
+                let recognition = null;                       // 当前 Web Speech API 实例
+                let activeCaptureMode = null;                 // 当前录音模式：'backend' | 'webspeech' | 'starting-*'
+                let pendingStopAfterStart = false;           // 录音启动过程中收到停止请求的标记
+                let microphoneStream = null;                  // 麦克风 MediaStream 对象（复用）
+                let microphoneStreamPromise = null;          // 麦克风获取中的 Promise（防重复请求）
+                let mediaRecorderStopPromise = null;         // MediaRecorder 停止后的 Promise
+                let mediaRecorderStopResolve = null;         // MediaRecorder 停止 Promise 的 resolve 函数
+                let recognitionFinalizeTimer = null;         // Web Speech 最终化超时定时器
+                let recognitionSessionId = 0;                // 会话 ID（用于丢弃过期的回调）
+                let pendingStop = false;                     // Web Speech 是否有待处理的停止请求
+                let pendingFinalizePromise = null;           // Web Speech 最终化完成的 Promise
+                let pendingFinalizeResolve = null;           // Web Speech 最终化 Promise 的 resolve
+                let latestInterimTranscript = "";            // Web Speech 最新临时识别结果
+                let finalTranscriptBuffer = "";              // Web Speech 累积的最终识别结果
+                let lastResultAt = 0;                        // 最近一次识别结果的时间戳
+                let lastError = null;                        // 最近一次识别错误
+
+                // ========== TTS 语音合成 ==========
+                const speechSynth = window.speechSynthesis;  // Web Speech 合成 API
+                let voiceZH = null;   // 中文语音对象
+                let voiceEN = null;   // 英文语音对象
+
+                /** 加载可用语音列表，优先选择 Google/Microsoft 的语音引擎 */
+                const loadVoices = () => {
+                    const voices = speechSynth.getVoices();
+                    // 加载中文语音（优先 Google/Microsoft 引擎）
+                    voiceZH = voices.find(v => v.lang === 'zh-CN' && (v.name.includes('Google') || v.name.includes('Microsoft'))) || voices.find(v => v.lang === 'zh-CN');
+                    // 加载英文语音（优先 Google/Microsoft 引擎）
+                    voiceEN = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Microsoft'))) || voices.find(v => v.lang.startsWith('en'));
+                };
+                // 语音列表异步加载完成后触发
+                if (speechSynth.onvoiceschanged !== undefined) speechSynth.onvoiceschanged = loadVoices;
+
+                /** 语音调试日志（统一格式输出到控制台） */
+                const debugVoice = (event, payload = {}) => {
+                    console.info("[Voice]", event, {
+                        ts: new Date().toISOString(),
+                        mode: activeCaptureMode,
+                        ...payload
+                    });
+                };
+
+                /** 统计文本中的有效字符数（去除空白后） */
+                const countUsefulChars = (text = "") => {
+                    return Array.from((text || "").replace(/\s+/g, "")).length;
+                };
+
+                /** 清除 Web Speech 最终化超时定时器 */
+                const clearRecognitionFinalizeTimer = () => {
+                    if (recognitionFinalizeTimer) {
+                        clearTimeout(recognitionFinalizeTimer);
+                        recognitionFinalizeTimer = null;
+                    }
+                };
+
+                /** 解除待处理的最终化 Promise */
+                const resolvePendingFinalize = () => {
+                    if (pendingFinalizeResolve) {
+                        pendingFinalizeResolve();
+                    }
+                    pendingFinalizeResolve = null;
+                    pendingFinalizePromise = null;
+                };
+
+                /** 确保最终化 Promise 存在（懒创建） */
+                const ensurePendingFinalizePromise = () => {
+                    if (!pendingFinalizePromise) {
+                        pendingFinalizePromise = new Promise((resolve) => {
+                            pendingFinalizeResolve = resolve;
+                        });
+                    }
+                    return pendingFinalizePromise;
+                };
+
+                /** 重置所有语音识别状态到初始值 */
+                const resetRecognitionState = () => {
+                    clearRecognitionFinalizeTimer();
+                    pendingStop = false;
+                    latestInterimTranscript = "";
+                    finalTranscriptBuffer = "";
+                    lastResultAt = 0;
+                    lastError = null;
+                    resolvePendingFinalize();
+                };
+
+                /** 获取浏览器支持的最佳录音 MIME 类型（优先 opus 编码） */
+                const getPreferredRecorderMimeType = () => {
+                    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+                        return "";
+                    }
+                    const preferredTypes = [
+                        'audio/webm;codecs=opus',
+                        'audio/webm'
+                    ];
+                    return preferredTypes.find(type => MediaRecorder.isTypeSupported(type)) || "";
+                };
+
+                /** 获取麦克风 MediaStream（带缓存和防重复请求） */
+                const getMicrophoneStream = async () => {
+                    if (microphoneStream && microphoneStream.active) {
+                        return microphoneStream;
+                    }
+                    if (microphoneStreamPromise) {
+                        return microphoneStreamPromise;
+                    }
+                    microphoneStreamPromise = navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then((stream) => {
+                            microphoneStream = stream;
+                            microphoneStreamPromise = null;
+                            return stream;
+                        })
+                        .catch((err) => {
+                            microphoneStreamPromise = null;
+                            throw err;
+                        });
+                    return microphoneStreamPromise;
+                };
+
+                /** 使用 Web Speech API 朗读文本（根据当前语言选择语音） */
+                const speak = (text, onStartCallback = null) => {
+                    speechSynth.cancel(); // 取消之前的朗读
+                    const utterance = new SpeechSynthesisUtterance(text);
+
+                    // 根据当前语言选择语音
+                    if (language.value === 'en') {
+                        utterance.lang = 'en-US';
+                        if (voiceEN) utterance.voice = voiceEN;
+                    } else {
+                        utterance.lang = 'zh-CN';
+                        if (voiceZH) utterance.voice = voiceZH;
+                    }
+
+                    // TTS 播放锁：播放期间禁用麦克风
+                    isSpeaking.value = true;
+                    utterance.onstart = () => {
+                        if (onStartCallback) onStartCallback();
+                    };
+                    utterance.onend = () => { isSpeaking.value = false; };
+                    utterance.onerror = () => { isSpeaking.value = false; };
+
+                    speechSynth.speak(utterance);
+                };
+
+                // 带等待的TTS（用于需要等待播报完成的场景）
+                const speakAndWait = (text) => {
+                    return new Promise((resolve) => {
+                        speechSynth.cancel();
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = 'zh-CN';
+                        if (voiceZH) utterance.voice = voiceZH;
+
+                        isSpeaking.value = true;
+                        utterance.onend = () => { isSpeaking.value = false; resolve(); };
+                        utterance.onerror = () => { isSpeaking.value = false; resolve(); };
+
+                        speechSynth.speak(utterance);
+                    });
+                };
+
+                /** 打断当前 TTS 播报并自动进入录音状态（用于连续对话） */
+                const interruptSpeech = () => {
+                    speechSynth.cancel();
+                    isSpeaking.value = false;
+                    isAnnouncingMedicine.value = false;
+                    
+                    // 自动进入录音状态
+                    isAutoListening.value = true;
+                    startListening();
+                };
+
+                let hasPlayedWelcome = false; // 防止重复播放欢迎语
+                /** 播放欢迎语音（仅首次） */
+                const playWelcomeMessage = () => {
+                    if (hasPlayedWelcome) return;
+                    speak("欢迎使用，请拍照", () => {
+                        hasPlayedWelcome = true;
+                    });
+                };
+
+                /** 用户交互后触发欢迎语的兜底逻辑（绕过浏览器自动播放限制） */
+                const fallbackWelcome = () => {
+                    if (!hasPlayedWelcome) {
+                        playWelcomeMessage();
+                    }
+                    window.removeEventListener('click', fallbackWelcome);
+                    window.removeEventListener('touchstart', fallbackWelcome);
+                    window.removeEventListener('keydown', fallbackWelcome);
+                };
+
+                // ========== 新手引导教程逻辑 ==========
+                /** 更新教程高亮目标元素的位置矩形（查询 DOM 元素的 getBoundingClientRect） */
+                const updateTutorialTargetRect = () => {
+                    const step = TUTORIAL_STEPS[tutorialStep.value];
+                    if (!step) return;
+                    let selector = step.selector;
+                    // 步骤1(切换模型): 当下拉菜单展开时，高亮转移到下拉菜单
+                    if (step.id === 'model' && showModelMenu.value) {
+                        selector = '[data-tutorial="model-dropdown"]';
+                    }
+                    const el = document.querySelector(selector);
+                    if (el) {
+                        const r = el.getBoundingClientRect();
+                        tutorialTargetRect.value = { top: r.top, left: r.left, width: r.width, height: r.height };
+                        tutorialReady.value = true;
+                    }
+                };
+
+                /** 初始化教程：检查是否已完成，未完成则启动引导 */
+                const initTutorial = () => {
+                    try {
+                        if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY) === '1') {
+                            tutorialCompleted.value = true;
+                            return;
+                        }
+                    } catch (err) { /* localStorage 不可用时跳过教程 */ }
+                    tutorialActive.value = true;
+                    tutorialStep.value = 0;
+                    // 首次用户不播放默认欢迎语，由教程引导
+                    hasPlayedWelcome = true;
+                    nextTick(() => updateTutorialTargetRect());
+                };
+
+                /** 推进到教程的下一步（到达最后一步时自动完成） */
+                const nextTutorialStep = () => {
+                    if (tutorialStep.value >= TUTORIAL_STEPS.length - 1) {
+                        completeTutorial();
+                        return;
+                    }
+                    tutorialStep.value++;
+                    nextTick(() => updateTutorialTargetRect());
+                };
+
+                /** 完成教程并持久化标记到 localStorage */
+                const completeTutorial = () => {
+                    tutorialActive.value = false;
+                    tutorialCompleted.value = true;
+                    try {
+                        window.localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
+                    } catch (err) { /* ignore */ }
+                };
+
+                /** 跳过教程 */
+                const skipTutorial = () => {
+                    completeTutorial();
+                };
+
+                // 监听教程步骤变化，重新计算高亮位置
+                watch(tutorialStep, () => {
+                    if (tutorialActive.value) {
+                        tutorialReady.value = false;
+                        nextTick(() => updateTutorialTargetRect());
+                    }
+                });
+
+                // 监听 phase 变化（步骤0→1 由上传触发）
+                watch(phase, (newPhase) => {
+                    if (tutorialActive.value && tutorialStep.value === 0 && newPhase === 'chat') {
+                        nextTutorialStep();
+                    }
+                });
+
+                // 监听模型下拉菜单（步骤1 按钮→下拉菜单高亮转移）
+                watch(showModelMenu, () => {
+                    if (tutorialActive.value && tutorialStep.value === 1) {
+                        nextTick(() => updateTutorialTargetRect());
+                    }
+                });
+                // ========== 教程逻辑结束 ==========
+
+                // ========== 组件挂载生命周期 ==========
+                onMounted(() => {
+                    loadVoices();       // 加载 TTS 语音列表
+                    initTutorial();     // 初始化新手引导教程
+                    // 非教程模式下播放欢迎语
+                    if (!tutorialActive.value) {
+                        playWelcomeMessage();
+                    }
+
+                    // 注册用户交互事件，绕过浏览器自动播放限制
+                    window.addEventListener('click', fallbackWelcome);
+                    window.addEventListener('touchstart', fallbackWelcome);
+                    window.addEventListener('keydown', fallbackWelcome);
+
+                    // 全局键盘监听：自动激活输入框（智能键盘模式）
+                    window.addEventListener('keydown', (e) => {
+                        // 仅在对话阶段生效
+                        if (phase.value !== 'chat' && phase.value !== 'manual') return;
+                        // 忽略弹窗开启时
+                        if (showConfirmModal.value || showErrorModal.value) return;
+                        // 忽略控制键和非字符键
+                        if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return;
+                        // 忽略已聚焦输入框的情况
+                        if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+
+                        // 自动开启键盘UI
+                        if (!showKeyboard.value) showKeyboard.value = true;
+
+                        // 聚焦并在下一帧处理输入
+                        nextTick(() => {
+                            const input = document.getElementById('chatInput');
+                            if (input) input.focus();
+                        });
+                    });
+
+                });
+
+                /** 触发隐藏的文件上传 input 的点击事件 */
+                const triggerFileUpload = () => fileInput.value.click();
+
+                /** 处理文件上传：构建 FormData 发送到后端，识别药品并进入对话模式 */
+                const handleFileUpload = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    isLoading.value = true;
+                    statusMessage.value = '正在为您识别...';
+                    speak("正在识别，请稍候。");
+                    const uploadStartedAt = performance.now();
+                    console.info("[Upload] start", {
+                        ts: new Date().toISOString(),
+                        name: file.name,
+                        type: file.type || 'unknown',
+                        size: file.size
+                    });
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        if (typeof axios === 'undefined') throw new Error("网络错误：Axios未加载");
+
+                        const res = await axios.post(`${API_BASE}/upload`, formData);
+                        console.info("[Upload] finish", {
+                            ts: new Date().toISOString(),
+                            name: file.name,
+                            type: file.type || 'unknown',
+                            size: file.size,
+                            latencyMs: Math.round(performance.now() - uploadStartedAt)
+                        });
+                        medicineId.value = res.data.id;
+                        medicineName.value = res.data.name || "识别成功";
+
+                        statusMessage.value = '识别成功！';
+
+                        // 设置药品播报锁，进入聊天页面
+                        isAnnouncingMedicine.value = true;
+                        phase.value = 'chat';
+
+                        // 异步播报，播报完成后解锁
+                        const utterance = new SpeechSynthesisUtterance(`识别成功。是${medicineName.value}。请按住绿色按钮问我问题。`);
+                        utterance.lang = 'zh-CN';
+                        if (voiceZH) utterance.voice = voiceZH;
+                        utterance.onend = () => { isAnnouncingMedicine.value = false; };
+                        utterance.onerror = () => { isAnnouncingMedicine.value = false; };
+                        speechSynth.speak(utterance);
+
+                    } catch (err) {
+                        console.error(err);
+                        console.info("[Upload] error", {
+                            ts: new Date().toISOString(),
+                            name: file.name,
+                            type: file.type || 'unknown',
+                            size: file.size,
+                            latencyMs: Math.round(performance.now() - uploadStartedAt)
+                        });
+                        statusMessage.value = '出错啦';
+                        const msg = err.response?.data?.message || err.message || "未知错误";
+                        speak("抱歉，识别出错了。");
+                        showError(msg);
+                    } finally {
+                        isLoading.value = false;
+                        if (fileInput.value) fileInput.value.value = '';
+                    }
+                };
+
+                /** 处理手动输入的说明书文本：发送到后端分析，进入对话模式 */
+                const handleManualSubmit = async () => {
+                    if (!manualText.value.trim()) {
+                        showError("请输入说明书内容");
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    statusMessage.value = '正在分析文本...';
+
+                    try {
+                        // 通过 Java 后端代理调用 AI 服务（前端不再直连 Python）
+                        const res = await axios.post(`${API_BASE}/analyze_text`, {
+                            text: manualText.value
+                        });
+
+                        medicineName.value = res.data.name || "分析成功";
+
+                        // 生成固定的测试 ID (9999)，方便在后台查找
+                        // 注意：只有在提问后，后端才会真正创建名为 medicine_9999 的知识库
+                        medicineId.value = 9999;
+
+                        // 将手动输入的上下文挂到全局变量，供后续对话使用
+                        window.currentManualContext = res.data.text;
+
+                        statusMessage.value = '分析完成！';
+                        speak(`分析完成。您可以去后台查看知识库了，但请先问我一个问题，例如“这个药怎么吃”，以触发数据保存。`);
+
+                        phase.value = 'chat';
+                        manualText.value = '';
+
+                    } catch (err) {
+                        console.error(err);
+                        showError("分析失败");
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                // ========== 录音逻辑（Groq Whisper 后端转写） ==========
+                let mediaRecorder = null;          // MediaRecorder 实例
+                let audioChunks = [];              // 录音数据块缓冲区
+                let recordingStartTime = 0;        // 录音开始时间戳
+
+                // Whisper 幻觉关键词列表（模型在静音时容易脑补出的虚假内容）
+                const HALLUCINATION_PATTERNS = [
+                    '点赞', '订阅', '转发', '打赏', '支持', '明镜', '栏目',
+                    '感谢观看', '感谢收看', '感谢收听', '感谢聆听',
+                    'Amara', 'amara', '字幕', '社群', '社区', '提供',
+                    '请订阅', '欢迎订阅', '下期再见', '再见', '谢谢',
+                    '请不吝', '不吝', 'org', '.org', '志愿者'
+                ];
+                /** 检测文本是否为 Whisper 幻觉（包含常见虚假关键词） */
+                const isHallucination = (text) => {
+                    return HALLUCINATION_PATTERNS.some(pattern => text.includes(pattern));
+                };
+
+                /** 处理后端 ASR 转写结果：根据状态码决定下一步（提问/重试/报错） */
+                const handleBackendTranscribeResult = async (data) => {
+                    const status = data?.status || ((data?.text && data.text.length > 0) ? 'ok' : 'silence');
+                    const text = (data?.text || '').trim();
+                    debugVoice('backend-transcribe-result', {
+                        status,
+                        textLength: text.length,
+                        rawLength: (data?.raw || '').length
+                    });
+
+                    if (status === 'ok' && text) {
+                        // 转写完成后立刻隐藏“正在识别语音...”，后续由 isThinking 承接问答加载态
+                        isTranscribing.value = false;
+                        textInput.value = text;
+                        await handleUserQuestion(text);
+                        return;
+                    }
+
+                    if (status === 'hallucination') {
+                        speak("请再说一遍。");
+                        return;
+                    }
+
+                    if (status === 'error') {
+                        speak("抱歉，没听清。");
+                        return;
+                    }
+
+                    speak("抱歉，没听到什么。");
+                };
+
+                /** 将录音音频上传到后端进行 Whisper 转写 */
+                const uploadRecordedAudio = async (audioBlob, durationMs) => {
+                    if (durationMs < BACKEND_MIN_RECORDING_MS || !audioBlob.size) {
+                        debugVoice('backend-recording-too-short', {
+                            durationMs,
+                            blobSize: audioBlob.size
+                        });
+                        speak('请说长一点。');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', audioBlob, `voice_${Date.now()}.webm`);
+                    isTranscribing.value = true;
+                    const requestStartedAt = performance.now();
+
+                    try {
+                        const res = await axios.post(`${API_BASE}/transcribe`, formData);
+                        debugVoice('backend-upload-finished', {
+                            durationMs,
+                            blobSize: audioBlob.size,
+                            latencyMs: Math.round(performance.now() - requestStartedAt)
+                        });
+                        await handleBackendTranscribeResult(res.data);
+                    } catch (err) {
+                        console.error('ASR Upload Error', err);
+                        debugVoice('backend-upload-error', {
+                            durationMs,
+                            blobSize: audioBlob.size,
+                            message: err.message || 'unknown'
+                        });
+                        speak('抱歉，没听清。');
+                    } finally {
+                        isTranscribing.value = false;
+                    }
+                };
+
+                /** 完成后端录音：合并音频块并上传转写 */
+                const finalizeBackendRecording = async () => {
+                    const durationMs = Date.now() - recordingStartTime;
+                    const mimeType = mediaRecorder?.mimeType || audioChunks[0]?.type || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    debugVoice('backend-recording-stop', {
+                        durationMs,
+                        blobSize: audioBlob.size,
+                        mimeType
+                    });
+                    audioChunks = [];
+                    mediaRecorder = null;
+                    activeCaptureMode = null;
+                    await uploadRecordedAudio(audioBlob, durationMs);
+                };
+
+                /** 完成 Web Speech 会话：选择最佳识别结果并处理（提问/幻觉过滤/报错） */
+                const finalizeWebSpeechSession = async (sessionId, trigger) => {
+                    if (sessionId !== recognitionSessionId) return;
+                    clearRecognitionFinalizeTimer();
+
+                    const finalText = finalTranscriptBuffer.trim();
+                    const interimText = latestInterimTranscript.trim();
+                    let selectedText = finalText;
+                    let selectedSource = "final";
+
+                    if (!selectedText && countUsefulChars(interimText) >= INTERIM_FALLBACK_MIN_LENGTH) {
+                        selectedText = interimText;
+                        selectedSource = "interim";
+                    }
+                    if (!selectedText) {
+                        selectedSource = "empty";
+                    }
+
+                    debugVoice('webspeech-finalize', {
+                        sessionId,
+                        trigger,
+                        selectedSource,
+                        finalLength: finalText.length,
+                        interimLength: interimText.length,
+                        lastError: lastError?.error || null,
+                        msSinceLastResult: lastResultAt ? Date.now() - lastResultAt : null
+                    });
+
+                    recognition = null;
+                    activeCaptureMode = null;
+                    pendingStop = false;
+
+                    if (selectedText) {
+                        liveTranscript.value = selectedText;
+                        if (isHallucination(selectedText)) {
+                            speak("请再说一遍。");
+                        } else {
+                            textInput.value = selectedText;
+                            await handleUserQuestion(selectedText);
+                        }
+                    } else if (lastError?.error === 'audio-capture' || lastError?.error === 'network') {
+                        speak("抱歉，没听清。");
+                    } else {
+                        speak("抱歉，没听到什么。");
+                    }
+
+                    resolvePendingFinalize();
+                };
+
+                /** 启动 Web Speech API 作为后备录音方案（后端录音不可用时） */
+                const startWebSpeechFallback = async () => {
+                    if (!SpeechRecognitionCtor) {
+                        return false;
+                    }
+
+                    const sessionId = ++recognitionSessionId;
+                    resetRecognitionState();
+                    activeCaptureMode = 'starting-webspeech';
+
+                    const rec = new SpeechRecognitionCtor();
+                    rec.lang = 'zh-CN';
+                    rec.continuous = true;
+                    rec.interimResults = true;
+                    recognition = rec;
+
+                    rec.onresult = (event) => {
+                        if (recognition !== rec || sessionId !== recognitionSessionId) return;
+
+                        let interim = "";
+                        let finalChunk = "";
+
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) {
+                                finalChunk += event.results[i][0].transcript;
+                            } else {
+                                interim += event.results[i][0].transcript;
+                            }
+                        }
+
+                        finalTranscriptBuffer += finalChunk;
+                        latestInterimTranscript = interim;
+                        liveTranscript.value = finalTranscriptBuffer + interim;
+                        lastResultAt = Date.now();
+
+                        debugVoice('webspeech-result', {
+                            sessionId,
+                            finalChunkLength: finalChunk.length,
+                            interimLength: interim.length,
+                            aggregateFinalLength: finalTranscriptBuffer.length
+                        });
+                    };
+
+                    rec.onerror = (e) => {
+                        if (recognition !== rec || sessionId !== recognitionSessionId) return;
+
+                        lastError = { error: e.error, message: e.message || '' };
+                        debugVoice('webspeech-error', {
+                            sessionId,
+                            error: e.error,
+                            message: e.message || ''
+                        });
+
+                        if (e.error === 'not-allowed') {
+                            isListening.value = false;
+                            pendingStop = false;
+                            recognition = null;
+                            activeCaptureMode = null;
+                            clearRecognitionFinalizeTimer();
+                            resolvePendingFinalize();
+                            showError("麦克风权限被拒绝，请允许浏览器访问麦克风。");
+                        }
+                    };
+
+                    rec.onend = () => {
+                        if (recognition !== rec || sessionId !== recognitionSessionId) return;
+
+                        debugVoice('webspeech-end', {
+                            sessionId,
+                            pendingStop,
+                            isListening: isListening.value
+                        });
+
+                        if (pendingStop) {
+                            finalizeWebSpeechSession(sessionId, 'onend');
+                            return;
+                        }
+
+                        if (isListening.value && activeCaptureMode === 'webspeech') {
+                            try {
+                                rec.start();
+                                debugVoice('webspeech-restart', { sessionId });
+                            } catch (err) {
+                                debugVoice('webspeech-restart-failed', {
+                                    sessionId,
+                                    message: err.message || 'unknown'
+                                });
+                            }
+                        }
+                    };
+
+                    try {
+                        rec.start();
+                        activeCaptureMode = 'webspeech';
+                        debugVoice('webspeech-start', { sessionId });
+                        return true;
+                    } catch (err) {
+                        recognition = null;
+                        activeCaptureMode = null;
+                        debugVoice('webspeech-start-failed', {
+                            sessionId,
+                            message: err.message || 'unknown'
+                        });
+                        return false;
+                    }
+                };
+
+                /** 停止 Web Speech API 录音并等待最终化完成 */
+                const stopWebSpeechFallback = async () => {
+                    if (!recognition) return;
+
+                    const sessionId = recognitionSessionId;
+                    pendingStop = true;
+                    debugVoice('webspeech-stop-requested', { sessionId });
+                    ensurePendingFinalizePromise();
+                    clearRecognitionFinalizeTimer();
+                    recognitionFinalizeTimer = setTimeout(() => {
+                        finalizeWebSpeechSession(sessionId, 'timeout');
+                    }, RECOGNITION_FINALIZE_TIMEOUT_MS);
+
+                    try {
+                        recognition.stop();
+                    } catch (err) {
+                        debugVoice('webspeech-stop-error', {
+                            sessionId,
+                            message: err.message || 'unknown'
+                        });
+                        await finalizeWebSpeechSession(sessionId, 'stop-error');
+                    }
+
+                    await pendingFinalizePromise;
+                };
+
+                /** 启动后端录音模式（MediaRecorder 录制音频，上传到 Groq Whisper 转写） */
+                const startBackendRecording = async () => {
+                    if (
+                        typeof MediaRecorder === 'undefined' ||
+                        !navigator.mediaDevices ||
+                        typeof navigator.mediaDevices.getUserMedia !== 'function'
+                    ) {
+                        return false;
+                    }
+
+                    activeCaptureMode = 'starting-backend';
+
+                    try {
+                        const stream = await getMicrophoneStream();
+                        const mimeType = getPreferredRecorderMimeType();
+                        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+                        audioChunks = [];
+                        recordingStartTime = Date.now();
+
+                        mediaRecorder.ondataavailable = (event) => {
+                            if (event.data && event.data.size > 0) {
+                                audioChunks.push(event.data);
+                            }
+                        };
+
+                        mediaRecorder.onerror = (event) => {
+                            debugVoice('backend-recorder-error', {
+                                message: event.error?.message || 'unknown'
+                            });
+                        };
+
+                        mediaRecorder.onstop = async () => {
+                            try {
+                                await finalizeBackendRecording();
+                            } finally {
+                                if (mediaRecorderStopResolve) {
+                                    mediaRecorderStopResolve();
+                                }
+                                mediaRecorderStopResolve = null;
+                                mediaRecorderStopPromise = null;
+                            }
+                        };
+
+                        mediaRecorder.start();
+                        activeCaptureMode = 'backend';
+                        debugVoice('backend-recording-start', {
+                            mimeType: mediaRecorder.mimeType || mimeType || 'browser-default'
+                        });
+                        return true;
+                    } catch (err) {
+                        mediaRecorder = null;
+                        activeCaptureMode = null;
+                        debugVoice('backend-recording-start-failed', {
+                            name: err.name || 'unknown',
+                            message: err.message || 'unknown'
+                        });
+                        return false;
+                    }
+                };
+
+                /** 停止后端录音并等待 onstop 回调完成 */
+                const stopBackendRecording = async () => {
+                    if (!mediaRecorder) return;
+                    if (mediaRecorder.state === 'inactive') return;
+
+                    mediaRecorderStopPromise = new Promise((resolve) => {
+                        mediaRecorderStopResolve = resolve;
+                    });
+                    mediaRecorder.stop();
+                    await mediaRecorderStopPromise;
+                };
+
+                /** 开始录音：优先后端录音，降级到 Web Speech API */
+                const startListening = async () => {
+                    // 教程：步骤4(按住说话) → 完成教程
+                    if (tutorialActive.value && tutorialStep.value === 4) {
+                        completeTutorial();
+                    }
+                    // 正在播报时不允许开始录音
+                    if (isSpeaking.value) return;
+
+                    // 已有对话时，允许打断当前 TTS
+                    if (chatHistory.value.length > 0) {
+                        speechSynth.cancel();
+                    }
+
+                    if (isListening.value) return;
+                    isListening.value = true;
+                    liveTranscript.value = "";
+
+                    pendingStopAfterStart = false;
+                    resetRecognitionState();
+                    debugVoice('start-listening');
+
+                    const backendStarted = await startBackendRecording();
+                    if (backendStarted) {
+                        if (pendingStopAfterStart) {
+                            await stopListening();
+                        }
+                        return;
+                    }
+
+                    if (pendingStopAfterStart) {
+                        isListening.value = false;
+                        activeCaptureMode = null;
+                        return;
+                    }
+
+                    const webSpeechStarted = await startWebSpeechFallback();
+                    if (webSpeechStarted) {
+                        if (pendingStopAfterStart) {
+                            await stopListening();
+                        }
+                        return;
+                    }
+
+                    showError("当前浏览器无法启用语音识别，请检查麦克风权限后重试。");
+                    isListening.value = false;
+                    activeCaptureMode = null;
+                };
+
+                /** 停止录音：根据当前录音模式调用对应的停止方法 */
+                const stopListening = async () => {
+                    if (!isListening.value) return;
+                    isAutoListening.value = false; // 重置自动录音状态
+
+                    if (activeCaptureMode === 'starting-backend' || activeCaptureMode === 'starting-webspeech') {
+                        pendingStopAfterStart = true;
+                        debugVoice('stop-listening-deferred', { mode: activeCaptureMode });
+                        return;
+                    }
+
+                    isListening.value = false;
+                    debugVoice('stop-listening', { mode: activeCaptureMode });
+
+                    if (activeCaptureMode === 'backend') {
+                        await stopBackendRecording();
+                        return;
+                    }
+
+                    if (activeCaptureMode === 'webspeech') {
+                        await stopWebSpeechFallback();
+                    }
+                };
+                /** 切换键盘输入区域的显示/隐藏 */
+                const toggleDataInput = () => showKeyboard.value = !showKeyboard.value;
+
+                /** 发送文本输入的问题 */
+                const sendText = () => {
+                    if (!textInput.value.trim()) return;
+                    handleUserQuestion(textInput.value);
+                    textInput.value = '';
+                };
+
+                /** 处理用户提问：发送到后端获取 AI 回复，解析卡片和引用 */
+                const handleUserQuestion = async (text) => {
+                    if (!text) return;
+                    if (isThinking.value) return; // 防止重复提交
+
+                    // 添加用户消息到对话历史
+                    chatHistory.value.push({ role: 'user', content: text });
+                    isThinking.value = true;
+                    scrollToBottom();
+
+                    try {
+                        let res;
+                        if (window.currentManualContext) {
+                            // 手动输入模式：传入 context 字段（前端直传说明书文本）
+                            res = await axios.post(`${API_BASE}/chat`, {
+                                medicineId: medicineId.value,
+                                question: text,
+                                context: window.currentManualContext,
+                                medicineName: medicineName.value,
+                                language: language.value,
+                                model: selectedModel.value
+                            });
+                        } else {
+                            // 正常模式：通过 Java 后端的标准流程
+                            res = await axios.post(`${API_BASE}/chat`, {
+                                medicineId: medicineId.value,
+                                question: text,
+                                medicineName: medicineName.value || (window.currentMedicine ? window.currentMedicine.name : null),
+                                language: language.value, // 多语言参数
+                                model: selectedModel.value
+                            });
+                        }
+
+                        let answer = res.data.answer;
+
+                        // 解析 <card> 标签中的用药卡片数据（附加功能）
+                        const cardRegex = /<card>([\s\S]*?)<\/card>/;
+                        const match = answer.match(cardRegex);
+                        let cardData = null;
+
+                        if (match) {
+                            try {
+                                // 清理 LLM 可能附带的 markdown 代码块标记
+                                const jsonStr = match[1].replace(/```json/g, '').replace(/```/g, '').trim();
+                                cardData = JSON.parse(jsonStr);
+                                // 从回答文本中移除 card 标签（不显示给用户）
+                                answer = answer.replace(match[0], "").trim();
+                            } catch (e) {
+                                console.error("Card Parse Error", e);
+                            }
+                        }
+
+                        // 解析 RAG 引用来源
+                        const citations = res.data.citations || [];
+
+                        chatHistory.value.push({
+                            role: 'ai',
+                            content: answer,
+                            card: cardData,
+                            citations: citations,
+                            citationsExpanded: false
+                        });
+                        speak(answer);
+                    } catch (err) {
+                        console.error(err);
+                        speak("网络连接可能断开了。");
+                        chatHistory.value.push({ role: 'ai', content: "网络错误，请重试。" });
+                    } finally {
+                        isThinking.value = false;
+                        scrollToBottom();
+                    }
+                };
+
+                /** 将对话区域滚动到底部（延迟到下一帧确保 DOM 已更新） */
+                const scrollToBottom = () => {
+                    nextTick(() => {
+                        const c = document.querySelector('.overflow-y-auto');
+                        if (c) c.scrollTop = c.scrollHeight;
+                    });
+                };
+
+                /** 点击重置按钮：教程模式下直接推进步骤，否则弹出确认框 */
+                const reset = () => {
+                    // 教程：步骤3(刷新) → 步骤4，跳过确认弹窗
+                    if (tutorialActive.value && tutorialStep.value === 3) {
+                        nextTutorialStep();
+                        return;
+                    }
+                    showConfirmModal.value = true;
+                };
+
+                /** 确认重置：清空对话历史，回到拍照页面 */
+                const confirmReset = () => {
+                    showConfirmModal.value = false;
+                    phase.value = 'idle';
+                    chatHistory.value = [];
+                    window.currentManualContext = null; // 清除手动输入的上下文
+                    speak("请拍照。");
+                };
+
+                /** 取消重置：关闭确认弹窗 */
+                const cancelReset = () => {
+                    showConfirmModal.value = false;
+                };
+
+                /** 显示自定义错误弹窗 */
+                const showError = (msg) => {
+                    errorMessage.value = msg;
+                    showErrorModal.value = true;
+                };
+
+                /** 关闭错误弹窗并清空错误信息 */
+                const closeErrorModal = () => {
+                    showErrorModal.value = false;
+                    errorMessage.value = '';
+                };
+
+                // ========== PDF 报告生成 ==========
+                /** 将当前问诊记录导出为 PDF 文件：截取报告模板 → html2canvas → jsPDF */
+                const generateReport = async () => {
+                    // 教程：步骤2(PDF导出) → 步骤3
+                    if (tutorialActive.value && tutorialStep.value === 2) {
+                        nextTutorialStep();
+                        return;
+                    }
+                    if (chatHistory.value.length === 0) {
+                        speak(language.value === 'zh' ? "请先进行对话。" : "Please start a conversation first.");
+                        return;
+                    }
+
+                    // 临时显示隐藏的报告模板 DOM
+                    const element = document.getElementById('report-template');
+                    element.classList.remove('hidden');
+
+                    try {
+                        speak(language.value === 'zh' ? "正在生成报告，请稍候。" : "Generating report, please wait.");
+                        // 使用 html2canvas 将 DOM 截图为 Canvas（2x 分辨率）
+                        const canvas = await html2canvas(element, { scale: 2 });
+                        const imgData = canvas.toDataURL('image/png');
+
+                        // 创建 A4 尺寸的 PDF 并添加图片
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                        const filename = language.value === 'zh'
+                            ? `MedVision助手_用药报告_${new Date().toISOString().slice(0, 10)}.pdf`
+                            : `MedVision_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+                        pdf.save(filename);
+
+                        speak(language.value === 'zh' ? "报告已下载。" : "Report downloaded.");
+                    } catch (err) {
+                        console.error("PDF Error", err);
+                        showError(language.value === 'zh' ? "生成报告失败" : "Failed to generate report");
+                    } finally {
+                        element.classList.add('hidden'); // 隐藏报告模板
+                    }
+                };
+
+                // ========== 返回模板需要的所有响应式数据和方法 ==========
+                return {
+                    phase, isLoading, statusMessage, fileInput, medicineName, chatHistory, manualText,
+                    isListening, isAutoListening, isSpeaking, isAnnouncingMedicine, isTranscribing, liveTranscript,
+                    textInput, isThinking, showKeyboard, showConfirmModal, showErrorModal, errorMessage,
+                    triggerFileUpload, handleFileUpload, handleManualSubmit, startListening, stopListening, interruptSpeech,
+                    sendText, toggleDataInput, reset, confirmReset, cancelReset, showError, closeErrorModal,
+                    language, toggleLanguage, generateReport, MODEL_OPTIONS, selectedModel, showModelMenu,
+                    getSelectedModelOption, toggleModelMenu, closeModelMenu, selectModel,
+                    tutorialActive, tutorialStep, tutorialCompleted, tutorialReady, tutorialTargetRect, TUTORIAL_STEPS, tooltipStyle, cutoutStyle, panelStyles, skipTutorial
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>

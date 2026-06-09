@@ -1,0 +1,726 @@
+/** index.wxss */
+page {
+  height: 100%;
+  background-color: #f8fafc;
+  /* slate-50 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Message Wrapper for Sender Label */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 30rpx;
+  max-width: 70%;
+  /* Half-half look */
+}
+
+.user-wrapper {
+  margin-left: auto;
+  align-items: flex-end;
+}
+
+.ai-wrapper {
+  margin-right: auto;
+  align-items: flex-start;
+}
+
+.voice-btn.disabled {
+  background: #9CA3AF;
+  /* gray-400 */
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 8rpx solid #bfdbfe;
+  /* blue-200 */
+  border-top-color: #2563eb;
+  /* blue-600 */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 24rpx;
+}
+
+.loading-text {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #1e40af;
+  /* blue-800 */
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Phase 1: Fullscreen Center (Idle) */
+.fullscreen-center {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #eff6ff;
+  /* blue-50 */
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+
+.header-section {
+  margin-top: 60rpx;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-title {
+  font-size: 72rpx;
+  /* text-4xl approx */
+  font-weight: 800;
+  /* font-extrabold */
+  color: #1e3a8a;
+  /* blue-900 */
+  margin-bottom: 8rpx;
+}
+
+.app-subtitle {
+  font-size: 36rpx;
+  /* text-xl */
+  font-weight: 500;
+  color: #2563eb;
+  /* blue-600 */
+}
+
+/* Tactile Camera Button */
+.camera-btn {
+  width: 500rpx;
+  /* w-72 approx 18rem = 288px = 576rpx, adjusted visually */
+  height: 500rpx;
+  background-color: #2563eb;
+  /* blue-600 */
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 16rpx solid #bfdbfe;
+  /* border-8 approx */
+  box-shadow: 0 16rpx 0 rgba(0, 0, 0, 0.15);
+  /* btn-tactile */
+  transition: all 0.1s;
+}
+
+.camera-btn:active {
+  background-color: #1d4ed8;
+  /* blue-700 */
+  box-shadow: 0 8rpx 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(8rpx);
+}
+
+.camera-icon {
+  width: 160rpx;
+  height: 160rpx;
+  margin-bottom: 24rpx;
+}
+
+.btn-text {
+  color: white;
+  font-size: 48rpx;
+  /* text-3xl */
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  /* tracking-widest */
+}
+
+.footer {
+  margin-bottom: 60rpx;
+  text-align: center;
+}
+
+.footer-text {
+  color: #6b7280;
+  /* gray-500 */
+  font-size: 32rpx;
+  /* text-lg */
+}
+
+/* 文件上传按钮 */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border: 4rpx solid #2563eb;
+  border-radius: 60rpx;
+  padding: 24rpx 48rpx;
+  box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.15);
+  transition: all 0.15s;
+}
+
+.upload-btn:active {
+  background-color: #eff6ff;
+  transform: scale(0.97);
+}
+
+.upload-icon {
+  font-size: 40rpx;
+  margin-right: 16rpx;
+}
+
+.upload-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #2563eb;
+  letter-spacing: 0.05em;
+}
+
+/* Phase 2: Chat Interface */
+.chat-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  position: relative;
+}
+
+.top-bar {
+  background-color: #2563eb;
+  /* blue-600 */
+  padding: 30rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  /* 固定在顶部，不随页面滚动 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.reset-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  font-weight: bold;
+  font-size: 32rpx;
+}
+
+.reset-btn:active {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 左占位块 — 与右按钮同宽，保证文字严格居中 */
+.spacer-left {
+  visibility: hidden;
+}
+
+.medicine-info {
+  text-align: center;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 24rpx;
+  /* text-sm */
+  opacity: 0.8;
+  display: block;
+}
+
+.medicine-name {
+  font-size: 48rpx;
+  /* 3xl */
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.chat-history {
+  flex: 1;
+  padding: 30rpx;
+  padding-top: 200rpx;
+  /* 为固定顶栏留出空间 */
+  padding-bottom: 380rpx;
+  /* 为固定底栏留出空间 */
+  box-sizing: border-box;
+  height: 100vh;
+}
+
+.sender-label {
+  font-size: 24rpx;
+  color: #6b7280;
+  /* gray-500 */
+  margin-bottom: 8rpx;
+  margin-left: 16rpx;
+  margin-right: 16rpx;
+}
+
+.message {
+  padding: 24rpx;
+  font-size: 32rpx;
+  /* text-base/lg */
+  line-height: 1.5;
+  word-break: break-all;
+  box-shadow: 0 4rpx 6rpx -1rpx rgba(0, 0, 0, 0.1);
+}
+
+/* Original Web Style Bubbles */
+.user-message {
+  background-color: #2563eb;
+  /* Blue-600 */
+  color: white;
+  border-radius: 40rpx 40rpx 8rpx 40rpx;
+  /* 20px 20px 4px 20px */
+}
+
+.ai-message {
+  background-color: #ffffff;
+  color: #1f2937;
+  /* Gray-800 */
+  border: 4rpx solid #e5e7eb;
+  /* Border-2 */
+  border-radius: 40rpx 40rpx 40rpx 8rpx;
+  /* 20px 20px 20px 4px */
+}
+
+/* Reminder Card Style */
+.reminder-card {
+  margin-top: 20rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background-color: #f9fafb;
+}
+
+.card-header {
+  background-color: #eff6ff;
+  padding: 16rpx;
+  font-weight: bold;
+  color: #2563eb;
+  font-size: 28rpx;
+  border-bottom: 1px solid #dbeafe;
+}
+
+.card-body {
+  padding: 20rpx;
+}
+
+.card-row {
+  display: flex;
+  margin-bottom: 16rpx;
+}
+
+.card-row:last-child {
+  margin-bottom: 0;
+}
+
+.row-label {
+  width: 80rpx;
+  font-weight: bold;
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.usage-label {
+  color: #2563eb;
+}
+
+.taboo-label {
+  color: #ef4444;
+}
+
+.row-content {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+/* ... existing styles ... */
+
+/* Thinking & Transcribing Pills */
+.thinking-pill {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  padding: 20rpx 40rpx;
+  border-radius: 40rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  font-size: 32rpx;
+  color: #4b5563;
+  /* gray-600 */
+  border: 1px solid #e5e7eb;
+}
+
+.ai-thinking {
+  margin-left: 0;
+  margin-right: auto;
+  margin-bottom: 30rpx;
+  width: fit-content;
+}
+
+.transcribing-pill-container {
+  position: fixed;
+  bottom: 400rpx;
+  /* Above fixed bottom controls */
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 101;
+}
+
+.spinner-sm {
+  width: 40rpx;
+  height: 40rpx;
+  border: 4rpx solid #e5e7eb;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  animation: spin 1s linear infinite;
+}
+
+.blue-spin {
+  border-top-color: #2563eb;
+}
+
+.green-spin {
+  border-top-color: #16a34a;
+}
+
+/* Bottom Controls */
+.bottom-controls {
+  padding: 40rpx;
+  background-color: white;
+  border-top: 2rpx solid #e5e7eb;
+  /* 固定在底部，不随页面滚动 */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.interrupt-btn-container {
+  position: absolute;
+  top: -110rpx;
+  right: 32rpx;
+  z-index: 140;
+  animation: scaleIn 0.25s ease-out;
+}
+
+.interrupt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18rpx 34rpx;
+  border-radius: 999rpx;
+  color: #ffffff;
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  border: 2rpx solid rgba(96, 165, 250, 0.3);
+  box-shadow: 0 8rpx 28rpx rgba(59, 130, 246, 0.39);
+}
+
+.interrupt-btn:active {
+  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+  transform: scale(0.95);
+}
+
+.interrupt-fa-icon {
+  margin-right: 12rpx;
+  font-size: 34rpx;
+  opacity: 0.9;
+}
+
+.interrupt-text {
+  font-size: 30rpx;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.voice-btn {
+  width: 100%;
+  height: 120rpx;
+  background-color: #16a34a;
+  /* green-600 */
+  border-radius: 60rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 40rpx;
+  font-weight: bold;
+  box-shadow: 0 8rpx 0 rgba(0, 0, 0, 0.15);
+  /* btn-tactile */
+  transition: all 0.1s;
+}
+
+.voice-btn:active {
+  background-color: #15803d;
+  /* green-700 */
+  box-shadow: 0 4rpx 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(4rpx);
+}
+
+.voice-btn.listening {
+  background-color: #ef4444;
+  /* red-500 */
+}
+
+/* Ensure disabled state overrides everything */
+.voice-btn.disabled {
+  background-color: #9CA3AF !important;
+  /* gray-400 */
+  box-shadow: none !important;
+  opacity: 0.8 !important;
+  color: #F3F4F6 !important;
+}
+
+/* 刷新按钮图标 */
+.reset-icon {
+  font-size: 44rpx;
+  font-weight: bold;
+}
+
+/* Font Awesome Icon (same font as web fa-microphone) */
+.fa-icon {
+  font-family: FontAwesome;
+  margin-right: 8rpx;
+}
+
+/* Text Input Toggle Link */
+.text-input-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16rpx;
+}
+
+.toggle-text {
+  color: #9CA3AF;
+  font-size: 28rpx;
+  text-decoration: underline;
+}
+
+/* Keyboard Input Area (Input + Send Button) */
+.keyboard-input-area {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.text-input {
+  flex: 1;
+  border: 4rpx solid #d1d5db;
+  border-radius: 24rpx;
+  padding: 16rpx 24rpx;
+  font-size: 32rpx;
+}
+
+.send-btn {
+  background-color: #2563eb;
+  color: white;
+  padding: 16rpx 40rpx;
+  border-radius: 24rpx;
+  font-weight: bold;
+  font-size: 32rpx;
+  display: flex;
+  align-items: center;
+}
+
+.send-btn:active {
+  background-color: #1d4ed8;
+}
+
+/* ========== Tutorial / 新手引导遮罩 ========== */
+.tutorial-fallback {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  animation: tutorialFadeIn 0.3s ease-out;
+}
+
+.tutorial-panel {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+
+
+.tutorial-tooltip {
+  position: fixed;
+  background: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 320px;
+  width: 90%;
+  padding: 24px 24px 20px;
+  box-sizing: border-box;
+  z-index: 1003;
+  animation: tutorialScaleIn 0.3s ease-out;
+  transition: all 0.3s ease-out;
+}
+
+.tutorial-tooltip-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tutorial-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #DBEAFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.tutorial-svg-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.tutorial-fa-icon {
+  font-family: FontAwesome;
+  font-size: 20px;
+  color: #2563EB;
+}
+
+.tutorial-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.tutorial-step-label {
+  font-size: 12px;
+  color: #9CA3AF;
+  font-weight: 500;
+  display: block;
+  line-height: 1.4;
+}
+
+.tutorial-step-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1F2937;
+  display: block;
+  line-height: 1.3;
+}
+
+.tutorial-desc {
+  color: #4B5563;
+  font-size: 15px;
+  line-height: 1.625;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.tutorial-tip-box {
+  background: #EFF6FF;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.tutorial-tip-text {
+  font-size: 12px;
+  color: #2563EB;
+  line-height: 1.5;
+}
+
+.tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #D1D5DB;
+  transition: all 0.3s;
+}
+
+.tutorial-dot.active {
+  background: #2563EB;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.tutorial-dot.done {
+  background: #2563EB;
+}
+
+.tutorial-skip {
+  font-size: 12px;
+  color: #9CA3AF;
+  text-decoration: underline;
+  padding: 4px;
+}
+
+@keyframes tutorialFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes tutorialScaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+

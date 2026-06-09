@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+.venv/
+
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+.idea/
+*.iml
+
+# Node/Frontend
+node_modules/
+dist/
+
+# macOS
+.DS_Store
+
+# Temp files
+temp_uploads/
+chroma_db/
+*.tmp
+*.log
+
+# IDE
+.vscode/
+.cursor/
+
+# Streamlit
+.streamlit/
+
+# Claude Code
+.claude/
+
+# Gemini
+.gemini/
+
+# Memory Bank (development notes)
+memory-bank/
+
+# Sensitive
+*.pem
+*.key

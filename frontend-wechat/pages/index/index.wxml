@@ -1,0 +1,165 @@
+<!-- index.wxml -->
+<view class="container">
+  <!-- Loading Overlay -->
+  <view wx:if="{{isLoading}}" class="loading-overlay">
+    <view class="spinner"></view>
+    <text class="loading-text">{{statusMessage || '加载中...'}}</text>
+  </view>
+  <!-- Phase 1: IDLE (Home) -->
+  <view wx:if="{{phase === 'idle'}}" class="fullscreen-center">
+    <view class="header-section">
+      <text class="app-title">MedVision助手</text>
+      <text class="app-subtitle">欢迎使用，请拍照</text>
+    </view>
+    <!-- Main Camera Button -->
+    <view class="camera-btn" bindtap="triggerCamera">
+      <image src="/assets/camera.svg" class="camera-icon"></image>
+      <text class="btn-text">拍照</text>
+    </view>
+    <view class="footer">
+      <text class="footer-text">支持 图片 / PDF / Word 上传</text>
+    </view>
+  </view>
+  <!-- Phase 2: User Interface (Chat) -->
+  <view wx:else class="chat-container">
+    <!-- Top Bar -->
+    <view class="top-bar">
+      <view class="reset-btn spacer-left"></view>
+      <view class="medicine-info">
+        <text class="info-label">当前识别</text>
+        <text class="medicine-name">{{medicineName}}</text>
+      </view>
+      <view class="reset-btn" bindtap="reset">
+        <text class="reset-icon">↻</text>
+      </view>
+    </view>
+    <!-- Chat Area -->
+    <scroll-view scroll-y="true" class="chat-history" scroll-into-view="{{toView}}">
+      <block wx:for="{{chatHistory}}" wx:key="index">
+        <!-- User Message -->
+        <view wx:if="{{item.role === 'user'}}" class="message-wrapper user-wrapper">
+          <text class="sender-label">我</text>
+          <view class="message user-message">
+            <text>{{item.content}}</text>
+          </view>
+        </view>
+        <!-- AI Message -->
+        <view wx:else class="message-wrapper ai-wrapper">
+          <text class="sender-label">用药助手</text>
+          <view class="message ai-message" bindtap="onAiTextTap" data-index="{{index}}">
+            <text>{{item.content}}</text>
+            <!-- Reminder Card -->
+            <view wx:if="{{item.card}}" class="reminder-card">
+              <view class="card-header">
+                <text>💊 {{language === 'zh' ? '用药小贴士' : 'Medication Tips'}}</text>
+              </view>
+              <view class="card-body">
+                <view class="card-row">
+                  <text class="row-label usage-label">{{language === 'zh' ? '用法' : 'Usage'}}</text>
+                  <text class="row-content">
+                    {{language === 'zh' ? (item.card.usage_zh || item.card.usage) : (item.card.usage_en || item.card.usage)}}
+                  </text>
+                </view>
+                <view class="card-row">
+                  <text class="row-label taboo-label">
+                    {{language === 'zh' ? '禁忌' : 'Caveats'}}
+                  </text>
+                  <text class="row-content">
+                    {{language === 'zh' ? (item.card.taboo_zh || item.card.taboo) : (item.card.taboo_en || item.card.taboo)}}
+                  </text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <!-- AI Thinking Indicator -->
+      <view wx:if="{{isThinking}}" class="thinking-pill ai-thinking">
+        <view class="spinner-sm blue-spin"></view>
+        <text>正在思考...</text>
+      </view>
+      <view id="scroll-bottom"></view>
+    </scroll-view>
+    <!-- Transcribing Indicator (Floating above bottom) -->
+    <view wx:if="{{isTranscribing}}" class="transcribing-pill-container">
+      <view class="thinking-pill">
+        <view class="spinner-sm green-spin"></view>
+        <text>正在识别语音...</text>
+      </view>
+    </view>
+    <!-- Bottom Controls -->
+    <view class="bottom-controls">
+      <view wx:if="{{isSpeaking || isAnnouncingMedicine}}" class="interrupt-btn-container">
+        <view class="interrupt-btn" bindtap="interruptSpeech">
+          <text class="fa-icon interrupt-fa-icon">{{pauseIcon}}</text>
+          <text class="interrupt-text">打断回答</text>
+        </view>
+      </view>
+      <!-- Text Input Toggle (Web Parity) -->
+      <view class="text-input-toggle" bindtap="toggleDataInput">
+        <text class="toggle-text">{{showKeyboard ? '收起键盘' : '无法说话？点此输入'}}</text>
+      </view>
+      <!-- Keyboard Input (Toggled) -->
+      <view wx:if="{{showKeyboard}}" class="keyboard-input-area">
+        <input class="text-input" value="{{textInput}}" bindinput="onTextInput" placeholder="输入问题..." confirm-type="send" bindconfirm="sendText" />
+        <view class="send-btn" bindtap="sendText">
+          <text>发送</text>
+        </view>
+      </view>
+      <!-- Voice Button -->
+      <view
+        class="voice-btn {{isListening ? 'listening' : ''}} {{(isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking) ? 'disabled' : ''}}"
+        bindtouchstart="onVoiceTouchStart"
+        bindtouchend="onVoiceTouchEnd"
+        bindtouchcancel="onVoiceTouchEnd"
+        bindtap="onVoiceButtonTap">
+        <text class="fa-icon">{{micIcon}}</text>
+        <text style="position:relative;top:-13px;">
+          {{(isAnnouncingMedicine || isSpeaking || isTranscribing || isThinking) ? '请 稍 候...' : (isListening ? (isAutoListening ? '正在聆听，请继续提问…' : '松 开 发 送') : '按 住 说 话')}}
+        </text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========== Tutorial 新手引导遮罩 ========== -->
+  <!-- 每个元素独立 position:fixed，无包裹容器。微信没有 pointer-events:none，使用独立容器会拦截切口区域触摸 -->
+  <!-- 定位未完成时的全屏遮罩 -->
+  <view wx:if="{{tutorialActive && !tutorialReady}}" class="tutorial-fallback" catchtap="onTutorialPanelTap"></view>
+
+  <block wx:if="{{tutorialActive && tutorialReady}}">
+    <!-- 四面板切出镂空窗口，靠暗面与亮切口对比形成视觉高亮 -->
+    <view class="tutorial-panel" catchtap="onTutorialPanelTap"
+      style="top:0; left:0; right:0; height:{{panelTop.height}}px;"></view>
+    <view class="tutorial-panel" catchtap="onTutorialPanelTap"
+      style="top:{{panelBottom.top}}px; left:0; right:0; bottom:0;"></view>
+    <view class="tutorial-panel" catchtap="onTutorialPanelTap"
+      style="top:{{panelLeft.top}}px; left:0; width:{{panelLeft.width}}px; height:{{panelLeft.height}}px;"></view>
+    <view class="tutorial-panel" catchtap="onTutorialPanelTap"
+      style="top:{{panelRight.top}}px; right:0; left:{{panelRight.left}}px; height:{{panelRight.height}}px;"></view>
+
+    <view class="tutorial-tooltip" catchtap="onTutorialTooltipTap"
+      style="top:{{tooltipTop}}; left:{{tooltipLeft}};">
+      <view class="tutorial-tooltip-header">
+        <view class="tutorial-icon-circle">
+          <image wx:if="{{currentStepIconSrc}}" src="{{currentStepIconSrc}}" class="tutorial-svg-icon" mode="aspectFit"></image>
+          <text wx:else class="tutorial-fa-icon">{{currentStepIconText}}</text>
+        </view>
+        <view class="tutorial-header-text">
+          <text class="tutorial-step-label">步骤 {{tutorialStep + 1}} / {{currentStepCount}}</text>
+          <text class="tutorial-step-title">{{currentStepTitle}}</text>
+        </view>
+      </view>
+      <text class="tutorial-desc">{{currentStepDesc}}</text>
+      <view class="tutorial-tip-box">
+        <text class="tutorial-tip-text">{{currentStepTip}}</text>
+      </view>
+      <view class="tutorial-footer">
+        <view class="tutorial-dots">
+          <view wx:for="{{currentStepCount}}" wx:key="*this"
+            class="tutorial-dot {{index === tutorialStep ? 'active' : ''}} {{index < tutorialStep ? 'done' : ''}}"></view>
+        </view>
+        <text class="tutorial-skip" bindtap="skipTutorial">跳过教程</text>
+      </view>
+    </view>
+  </block>
+</view>

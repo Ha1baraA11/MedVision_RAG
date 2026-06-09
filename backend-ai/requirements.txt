@@ -1,0 +1,22 @@
+# 核心依赖（版本已锁定，基于 pip freeze 2026-03-07）
+# 更新方式: 在 venv 中先 pip install --upgrade <pkg>，再 pip freeze > requirements-lock.txt 并同步此文件
+
+fastapi==0.128.8
+uvicorn==0.40.0
+python-multipart==0.0.22
+openai==2.20.0
+ocrmac==1.0.1
+langchain==1.2.10
+langchain-community==0.4.1
+langchain-openai==1.1.9
+langchain-huggingface==1.2.0
+chromadb==1.5.0
+unstructured==0.18.32
+sentence-transformers==5.2.2
+groq==1.0.0
+pymysql==1.1.2
+edge-tts==7.2.7
+pypdf==6.7.0
+python-docx==1.2.0
+pymupdf==1.27.1
+python-dotenv==1.2.1
