@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>KI-gestuetzter Medikamentenassistent mit Sprachinteraktion</strong><br>
-  Foto des Beipackzettels aufnehmen -- sofortige Antworten ueber RAG + Sprache.
+  Medikamentenverpackung scannen oder Beipackzettel hochladen und fundierte Antworten per Sprache oder Text erhalten.
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 MedVision-RAG hilft sehbehinderten und aelteren Nutzern, ihre Medikamente zu verstehen. Richten Sie die Kamera auf eine Medikamentenverpackung oder laden Sie eine PDF/Word-Datei hoch -- das System:
 
 1. **Extrahiert Text** per OCR (macOS Vision / Tesseract als Fallback)
-2. **Bereinigt den Text** ueber die Unstructured.io-Pipeline (Leerzeichen, abgebrochene Absaetze, Aufzaehlungspunkte)
+2. **Normalisiert OCR-Text** und bewahrt eine nuetzliche Absatzstruktur
 3. **Erstellt eine Wissensbasis** durch Vektorisierung des Textes in ChromaDB
 4. **Beantwortet Fragen** mit adaptivem RAG -- kurze Texte verwenden direktes Context Stuffing, lange Texte nutzen Vektor-Aehnlichkeitssuche
 5. **Liest die Antwort vor** ueber edge-tts
@@ -56,7 +56,7 @@ Das System unterstuetzt einen **Webbrowser**, ein **WeChat-Mini-Programm** sowie
 - Hochkontrast-UI (WCAG AA-konform)
 - Grosse Touch-Ziele (48px+)
 - Vollstaendig sprachgesteuerter Workflow fuer sehbehinderte Nutzer
-- Chinesisch/Englisch-Umschaltung mit synchronisierter KI-Antwort und TTS-Sprache
+- Chinesisch/Englisch-Umschaltung mit synchronisierter KI-Antwort und TTS-Sprachauswahl
 
 ## Architektur
 
@@ -64,7 +64,7 @@ Das System unterstuetzt einen **Webbrowser**, ein **WeChat-Mini-Programm** sowie
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  Web Front  │────▶│  Java Backend    │────▶│  Python AI       │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ Bearbeiten Sie `risk_keywords.json`, um Ausloeserwoerter hinzuzufuegen oder zu e
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-Erscheint eines der Schluesselwoerter in der Frage des Nutzers oder in der KI-Antwort, protokolliert das System das Ereignis und sendet (sofern konfiguriert) eine E-Mail-Benachrichtigung.
+Erscheint ein konfiguriertes Schluesselwort in der Frage des Nutzers, protokolliert das System ein Risikoereignis und kann eine E-Mail-Benachrichtigung senden.
 
 ### Admin-Dashboard-Sicherheit
 
@@ -452,7 +452,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Vue 3 Single-File-Web-App
+├── frontend/                  # Vue-3-CDN-Single-Page-Web-App
 │   └── index.html             # Komplettes Frontend (848 Zeilen)
 ├── frontend-wechat/           # WeChat-Mini-Programm
 │   ├── pages/index/           # Hauptseite (WXML + JS + WXSS)
@@ -601,4 +601,4 @@ print(bcrypt.hash("your_new_password"))
 
 ## Lizenz
 
-MIT
+Dieses Repository enthaelt derzeit keine Lizenzdatei. Fuegen Sie eine ausdrueckliche Lizenz hinzu, bevor Sie das Projekt ausserhalb des vorgesehenen Rahmens verbreiten oder wiederverwenden.

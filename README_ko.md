@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>음성 인터랙션 기반 AI 복약 보조 시스템</strong><br>
-  의약품 설명서를 촬영하면 RAG + 음성으로 즉시 답변을 제공합니다.
+  의약품 포장을 스캔하거나 설명서를 업로드한 뒤 음성 또는 텍스트로 자료에 근거한 답변을 받으세요.
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 MedVision-RAG는 시각장애인과 고령 사용자가 의약품 정보를 쉽게 이해할 수 있도록 돕는 시스템입니다. 의약품 포장지를 카메라로 촬영하거나 PDF/Word 문서를 업로드하면 다음과 같이 동작합니다:
 
 1. **텍스트 추출** — OCR(macOS Vision / Tesseract 폴백) 수행
-2. **텍스트 정제** — Unstructured.io 파이프라인으로 공백, 깨진 문단, 글머리표 정리
+2. **OCR 텍스트 정규화** — 유용한 문단 구조 유지
 3. **지식 베이스 구축** — 텍스트를 벡터화하여 ChromaDB에 저장
 4. **질의응답** — 적응형 RAG: 짧은 텍스트는 직접 컨텍스트 주입, 긴 텍스트는 벡터 유사도 검색
 5. **음성 출력** — edge-tts로 답변을 음성으로 읽어줌
@@ -56,7 +56,7 @@ MedVision-RAG는 시각장애인과 고령 사용자가 의약품 정보를 쉽�
 - 고대비 UI (WCAG AA 준수)
 - 큰 터치 영역 (48px 이상)
 - 시각장애인을 위한 완전 음성 기반 워크플로우
-- 중국어/영어 언어 전환 — AI 응답 및 TTS 언어 동기화
+- 중국어/영어 언어 전환 — AI 응답 및 TTS 음성 선택 동기화
 
 ## 시스템 아키텍처
 
@@ -64,7 +64,7 @@ MedVision-RAG는 시각장애인과 고령 사용자가 의약품 정보를 쉽�
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  Web Front  │────▶│  Java Backend    │────▶│  Python AI       │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ embedding_model = HuggingFaceEmbeddings(
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-사용자의 질문이나 AI 응답에 키워드가 포함되면 시스템이 이벤트를 기록하고 (설정된 경우) 이메일 알림을 발송합니다.
+설정된 키워드가 사용자 질문에 포함되면 시스템이 위험 이벤트를 기록하고 이메일 알림을 보낼 수 있습니다.
 
 ### 관리자 대시보드 보안
 
@@ -452,7 +452,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Vue 3 단일 파일 웹 앱
+├── frontend/                  # Vue 3 CDN 단일 페이지 웹 앱
 │   └── index.html             # 완전한 프론트엔드 (848줄)
 ├── frontend-wechat/           # 위챗 미니 프로그램
 │   ├── pages/index/           # 메인 페이지 (WXML + JS + WXSS)
@@ -601,4 +601,4 @@ print(bcrypt.hash("your_new_password"))
 
 ## 라이선스
 
-MIT
+이 저장소에는 현재 라이선스 파일이 없습니다. 의도된 범위를 벗어나 배포하거나 재사용하기 전에 명시적인 라이선스를 추가하세요.

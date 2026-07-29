@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI 驱动的药品助手，支持语音交互</strong><br>
-  拍一张药品说明书的照片，通过 RAG + 语音即时获取用药信息
+  扫描药品包装或上传说明书，然后通过语音或文字获取基于资料的回答。
 </p>
 
 <p align="center">
@@ -17,10 +17,10 @@
 
 ## 它能做什么
 
-MedVision-RAG 帮助视障人士和老年用户理解药品信息。对着药盒拍张照，或者上传 PDF / Word 文档，系统会：
+MedVision-RAG 帮助视障人士、老年用户及偏好语音交互的用户理解药品信息。对准药品包装拍照，或上传 PDF / Word 文档后，系统会：
 
 1. **提取文字** — 通过 OCR 识别（macOS Vision / Tesseract 回退）
-2. **清洗文本** — 使用 Unstructured.io 管道处理空格、断行、项目符号
+2. **规范化 OCR 文本** — 保留有用的段落结构
 3. **构建知识库** — 将文本向量化存入 ChromaDB
 4. **回答问题** — 自适应 RAG：短文本直接注入上下文，长文本做向量相似度检索
 5. **语音播报** — 通过 edge-tts 朗读答案
@@ -56,7 +56,7 @@ MedVision-RAG 帮助视障人士和老年用户理解药品信息。对着药盒
 - 高对比度 UI（WCAG AA 合规）
 - 大触摸目标（48px+）
 - 全语音驱动工作流，适合视障用户
-- 中英文一键切换，AI 回答和语音播报同步切换
+- 中英文一键切换，AI 回答与 TTS 语音选择同步切换
 
 ## 系统架构
 
@@ -64,7 +64,7 @@ MedVision-RAG 帮助视障人士和老年用户理解药品信息。对着药盒
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  网页前端    │────▶│  Java 后端       │────▶│  Python AI 服务  │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ embedding_model = HuggingFaceEmbeddings(
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-当用户问题或 AI 回答中出现任何关键词时，系统会记录事件并在配置了邮件的情况下发送告警。
+当用户问题中出现已配置关键词时，系统会记录风险事件，并可发送邮件告警。
 
 ### 管理后台安全
 
@@ -407,24 +407,26 @@ python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceE
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `GET` | `/health` | 健康检查 |
-| `POST` | `/ocr` | OCR 图片/PDF/Word → 提取文字 |
-| `POST` | `/chat` | RAG 问答 |
-| `POST` | `/transcribe` | 语音转文字（Groq Whisper） |
-| `POST` | `/analyze` | 手动文本分析 |
-| `GET` | `/tts` | 文字转语音（edge-tts） |
-| `GET` | `/search` | 搜索药品历史 |
+| `POST` | `/internal/ocr` | 内部 OCR 接口：提取图片/PDF/Word 文本 |
+| `POST` | `/internal/chat` | 内部 RAG 问答接口 |
+| `POST` | `/internal/transcribe` | 内部语音转文字接口（Groq Whisper） |
+| `POST` | `/internal/analyze_text` | 内部手动文本分析接口 |
+| `GET` | `/internal/tts` | 内部文字转语音接口（edge-tts） |
 
 ### Java 后端（`:8080`）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `GET` | `/api/medicine/health` | 健康检查 |
-| `POST` | `/api/medicine/recognize` | 上传并识别药品说明书 |
+| `POST` | `/api/medicine/upload` | 上传并识别药品文档 |
 | `POST` | `/api/medicine/chat` | 代理转发到 AI 服务 |
-| `GET` | `/api/medicine/list` | 列出所有已存储药品 |
+| `POST` | `/api/medicine/transcribe` | 语音转文字 |
+| `POST` | `/api/medicine/analyze_text` | 分析手动输入的文本 |
+| `GET` | `/api/medicine/tts` | 生成语音音频 |
+| `GET` | `/api/medicine/search` | 搜索已保存药品 |
 | `GET` | `/api/medicine/chat-logs` | 聊天日志（管理员） |
-| `GET` | `/api/medicine/analytics` | 使用分析（管理员） |
-| `POST` | `/api/medicine/admin/login` | 管理员登录 |
+| `GET` | `/api/medicine/chat-logs/risky` | 风险标记聊天记录 |
+| `GET` | `/api/medicine/analytics/top-medicines` | 咨询次数最多的药品 |
 
 ## 测试
 
@@ -452,7 +454,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Vue 3 单文件网页应用
+├── frontend/                  # Vue 3 CDN 单页网页应用
 │   └── index.html             # 完整前端（848 行）
 ├── frontend-wechat/           # 微信小程序
 │   ├── pages/index/           # 主页面（WXML + JS + WXSS）
@@ -601,4 +603,4 @@ print(bcrypt.hash("你的新密码"))
 
 ## 开源协议
 
-MIT
+仓库目前未包含许可证文件。请在分发或超出预期范围复用项目之前添加明确的许可证。
