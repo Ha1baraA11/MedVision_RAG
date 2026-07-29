@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Assistente de medicamentos com IA e interacao por voz</strong><br>
-  Fotografe qualquer bula de remedio e obtenha respostas instantaneas via RAG + voz.
+  Escaneie uma embalagem de medicamento ou envie uma bula e receba respostas fundamentadas por voz ou texto.
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 O MedVision-RAG ajuda usuarios com deficiencia visual e idosos a entenderem seus medicamentos. Aponte a camera para a embalagem de um remedio ou envie um arquivo PDF/Word, e o sistema:
 
 1. **Extrai o texto** via OCR (macOS Vision / Tesseract como alternativa)
-2. **Limpa o texto** usando o pipeline do Unstructured.io (espacos em branco, paragrafos quebrados, marcadores)
+2. **Normaliza o texto de OCR** e preserva uma estrutura de paragrafos util
 3. **Constroi uma base de conhecimento** vetorizando o texto no ChromaDB
 4. **Responde perguntas** usando RAG adaptativo — textos curtos usam context stuffing direto, textos longos usam busca por similaridade vetorial
 5. **Le a resposta em voz alta** via edge-tts
@@ -56,7 +56,7 @@ O sistema suporta **navegador web**, **Mini Program do WeChat** e um **painel ad
 - UI de alto contraste (compativel com WCAG AA)
 - Alvos de toque grandes (48px+)
 - Fluxo de trabalho totalmente conduzido por voz para usuarios com deficiencia visual
-- Alternancia entre chines/ingles com sincronizacao do idioma da resposta da IA e do TTS
+- Alternancia entre chines e ingles com sincronizacao da resposta da IA e da selecao de voz do TTS
 
 ## Arquitetura
 
@@ -64,7 +64,7 @@ O sistema suporta **navegador web**, **Mini Program do WeChat** e um **painel ad
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  Web Front  │────▶│  Java Backend    │────▶│  Python AI       │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ Edite `risk_keywords.json` para adicionar ou remover palavras de alerta:
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-Quando qualquer palavra-chave aparece na pergunta do usuario ou na resposta da IA, o sistema registra o evento e (se configurado) envia um alerta por e-mail.
+Quando uma palavra-chave configurada aparece na pergunta do usuario, o sistema registra um evento de risco e pode enviar um alerta por e-mail.
 
 ### Seguranca do painel administrativo
 
@@ -452,7 +452,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Aplicacao web Vue 3 em arquivo unico
+├── frontend/                  # Aplicacao web de pagina unica com Vue 3 CDN
 │   └── index.html             # Frontend completo (848 linhas)
 ├── frontend-wechat/           # Mini Program do WeChat
 │   ├── pages/index/           # Pagina principal (WXML + JS + WXSS)
@@ -601,4 +601,4 @@ print(bcrypt.hash("sua_nova_senha"))
 
 ## Licenca
 
-MIT
+Este repositorio atualmente nao inclui um arquivo de licenca. Adicione uma licenca explicita antes de distribuir ou reutilizar o projeto fora do escopo previsto.

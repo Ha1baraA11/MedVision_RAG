@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI 驅動的語音互動用藥助手</strong><br>
-  拍下任何藥品說明書，透過 RAG + 語音即時獲得解答。
+  掃描藥品包裝或上傳說明書，再透過語音或文字取得依據資料生成的回答。
 </p>
 
 <p align="center">
@@ -17,10 +17,10 @@
 
 ## 功能說明
 
-MedVision-RAG 協助視障與年長使用者了解自身用藥。將鏡頭對準藥品包裝或上傳 PDF/Word 文件，系統會：
+MedVision-RAG 協助視障者、年長使用者及偏好語音操作的使用者了解藥品資訊。將鏡頭對準藥品包裝或上傳 PDF/Word 文件後，系統會：
 
 1. **擷取文字** — 透過 OCR（macOS Vision / Tesseract 備援）
-2. **清理文字** — 使用 Unstructured.io 管線處理空白、斷行、項目符號
+2. **正規化 OCR 文字** — 保留有用的段落結構
 3. **建立知識庫** — 將文字向量化存入 ChromaDB
 4. **回答問題** — 採用自適應 RAG：短文本直接注入上下文，長文本使用向量相似度搜尋
 5. **朗讀答案** — 透過 edge-tts 語音合成
@@ -56,7 +56,7 @@ MedVision-RAG 協助視障與年長使用者了解自身用藥。將鏡頭對準
 - 高對比度 UI（符合 WCAG AA 標準）
 - 大型觸控目標（48px 以上）
 - 完整語音驅動工作流程，適用於視障使用者
-- 中英文語言切換，AI 回應與 TTS 語言同步切換
+- 中英文語言切換，AI 回應與 TTS 語音選擇同步切換
 
 ## 系統架構
 
@@ -64,7 +64,7 @@ MedVision-RAG 協助視障與年長使用者了解自身用藥。將鏡頭對準
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  Web Front  │────▶│  Java Backend    │────▶│  Python AI       │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ embedding_model = HuggingFaceEmbeddings(
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-當使用者的問題或 AI 的回應中出現任何關鍵字時，系統會記錄事件並（若已設定）發送電子郵件警示。
+當使用者的問題出現已設定的關鍵字時，系統會記錄風險事件，並可發送電子郵件警示。
 
 ### 管理後台安全性
 
@@ -452,7 +452,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Vue 3 單頁網頁應用程式
+├── frontend/                  # Vue 3 CDN 單頁網頁應用程式
 │   └── index.html             # 完整前端（848 行）
 ├── frontend-wechat/           # 微信小程式
 │   ├── pages/index/           # 主頁面（WXML + JS + WXSS）
@@ -601,4 +601,4 @@ print(bcrypt.hash("your_new_password"))
 
 ## 授權條款
 
-MIT
+此儲存庫目前未包含授權檔案。請在散布或於預期範圍外重複使用本專案前新增明確的授權條款。

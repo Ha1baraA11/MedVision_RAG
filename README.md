@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>AI-powered medication assistant with voice interaction</strong><br>
-  Snap a photo of any drug insert — get instant answers via RAG + voice.
+  Scan a medicine package or upload an insert, then ask grounded questions by voice or text.
 </p>
 
 <p align="center">
@@ -17,10 +17,10 @@
 
 ## What it does
 
-MedVision-RAG helps visually impaired and elderly users understand their medication. Point your camera at a drug package or upload a PDF/Word document, and the system:
+MedVision-RAG helps visually impaired users, older adults, and anyone who prefers a voice-first workflow understand medicine information. Point your camera at a package or upload a PDF/Word document, and the system:
 
 1. **Extracts text** via OCR (macOS Vision / Tesseract fallback)
-2. **Cleans the text** using Unstructured.io pipeline (whitespace, broken paragraphs, bullet points)
+2. **Normalizes OCR text** while preserving useful paragraph structure
 3. **Builds a knowledge base** by vectorizing the text into ChromaDB
 4. **Answers questions** using adaptive RAG — short texts use direct context stuffing, long texts use vector similarity search
 5. **Reads the answer aloud** via edge-tts
@@ -56,7 +56,7 @@ The system supports **web browser**, **WeChat Mini Program**, and an **admin das
 - High contrast UI (WCAG AA compliant)
 - Large touch targets (48px+)
 - Full voice-driven workflow for visually impaired users
-- Chinese/English language toggle with synchronized AI response and TTS language
+- Chinese/English language toggle with synchronized AI response and TTS voice selection
 
 ## Architecture
 
@@ -64,7 +64,7 @@ The system supports **web browser**, **WeChat Mini Program**, and an **admin das
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │  Web Front  │────▶│  Java Backend    │────▶│  Python AI       │
 │  :5174      │     │  Spring Boot     │     │  FastAPI          │
-│  Vue 3      │     │  :8080           │     │  :8001            │
+│  Vue 3 CDN  │     │  :8080           │     │  :8001            │
 └─────────────┘     │                  │     │                   │
                     │  - REST API      │     │  - OCR (ocrmac)   │
 ┌─────────────┐     │  - JPA / MySQL   │     │  - ASR (Groq)     │
@@ -373,11 +373,11 @@ Edit `risk_keywords.json` to add or remove trigger words:
 
 ```json
 {
-  "keywords": ["过量", "中毒", "过敏", "禁忌", "副作用", "..."]
+  "keywords": ["overdose", "poisoning", "allergy", "contraindication", "side effect", "..."]
 }
 ```
 
-When any keyword appears in the user's question or AI's response, the system logs the event and (if configured) sends an email alert.
+When a configured keyword appears in the user's question, the system records a risk event and can send an email alert.
 
 ### Admin dashboard security
 
@@ -407,24 +407,26 @@ python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceE
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check |
-| `POST` | `/ocr` | OCR image/PDF/Word → extract text |
-| `POST` | `/chat` | RAG question answering |
-| `POST` | `/transcribe` | Speech-to-text (Whisper via Groq) |
-| `POST` | `/analyze` | Manual text analysis |
-| `GET` | `/tts` | Text-to-speech (edge-tts) |
-| `GET` | `/search` | Search drug history |
+| `POST` | `/internal/ocr` | Internal OCR endpoint for image/PDF/Word extraction |
+| `POST` | `/internal/chat` | Internal RAG question-answering endpoint |
+| `POST` | `/internal/transcribe` | Internal speech-to-text endpoint (Whisper via Groq) |
+| `POST` | `/internal/analyze_text` | Internal manual-text analysis endpoint |
+| `GET` | `/internal/tts` | Internal text-to-speech endpoint (edge-tts) |
 
 ### Java Backend (`:8080`)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/medicine/health` | Health check |
-| `POST` | `/api/medicine/recognize` | Upload and recognize drug insert |
+| `POST` | `/api/medicine/upload` | Upload and recognize a medicine document |
 | `POST` | `/api/medicine/chat` | Proxy to AI service chat |
-| `GET` | `/api/medicine/list` | List all stored drugs |
+| `POST` | `/api/medicine/transcribe` | Transcribe audio |
+| `POST` | `/api/medicine/analyze_text` | Analyze manually entered text |
+| `GET` | `/api/medicine/tts` | Generate speech audio |
+| `GET` | `/api/medicine/search` | Search stored medicines |
 | `GET` | `/api/medicine/chat-logs` | Chat log history (admin) |
-| `GET` | `/api/medicine/analytics` | Usage analytics (admin) |
-| `POST` | `/api/medicine/admin/login` | Admin login |
+| `GET` | `/api/medicine/chat-logs/risky` | Risk-flagged chat logs |
+| `GET` | `/api/medicine/analytics/top-medicines` | Most consulted medicines |
 
 ## Testing
 
@@ -452,7 +454,7 @@ mvn test
 
 ```
 MedVision-RAG/
-├── frontend/                  # Vue 3 single-file web app
+├── frontend/                  # Vue 3 CDN single-page web app
 │   └── index.html             # Complete frontend (848 lines)
 ├── frontend-wechat/           # WeChat Mini Program
 │   ├── pages/index/           # Main page (WXML + JS + WXSS)
@@ -601,4 +603,4 @@ print(bcrypt.hash("your_new_password"))
 
 ## License
 
-MIT
+No license file is currently included in this repository. Add an explicit license before distributing or reusing the project outside its intended scope.
